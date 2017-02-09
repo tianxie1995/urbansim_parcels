@@ -677,8 +677,8 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
 
         # TODO move last two params to pro forma model
         lookup_results[form] = pf.lookup(form, newdf,
-                                                 only_built=pf.only_built,
-                                                 pass_through=pf.pass_through)
+                                         only_built=pf.only_built,
+                                         pass_through=pf.pass_through)
 
         # TODO move to proforma model
         if pf.residential_to_yearly and "residential" in pf.pass_through:
