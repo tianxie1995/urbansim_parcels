@@ -664,25 +664,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
 
         newdf = df[allowed]
 
-        # TODO move to proforma model
-        if pf.simple_zoning:
-            if form == "residential":
-                # these are new computed in the effective max_dua method
-                newdf["max_far"] = pd.Series()
-                newdf["max_height"] = pd.Series()
-            else:
-                # these are new computed in the effective max_far method
-                newdf["max_dua"] = pd.Series()
-                newdf["max_height"] = pd.Series()
-
-        # TODO move last two params to pro forma model
-        lookup_results[form] = pf.lookup(form, newdf,
-                                         only_built=pf.only_built,
-                                         pass_through=pf.pass_through)
-
-        # TODO move to proforma model
-        if pf.residential_to_yearly and "residential" in pf.pass_through:
-            lookup_results[form]["residential"] /= pf.cap_rate
+        lookup_results[form] = pf.lookup(form, newdf)
 
     feasibility = pd.concat(lookup_results.values(),
                             keys=lookup_results.keys(),
