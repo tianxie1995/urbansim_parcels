@@ -138,11 +138,11 @@ def price_vars(net):
 @orca.step('feasibility')
 def feasibility(parcels,
                 parcel_sales_price_sqft_func,
-                parcel_is_allowed_func):
+                parcel_is_allowed_func, proforma):
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
-                          cfg=None)
+                          cfg=proforma)
 
 
 @orca.injectable("add_extra_columns_func", autocall=False)
