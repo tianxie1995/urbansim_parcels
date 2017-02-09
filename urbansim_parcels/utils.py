@@ -314,7 +314,7 @@ def lcm_estimate(cfg, choosers, chosen_fname, buildings, join_tbls,
 
 def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
                  supply_fname, vacant_fname,
-                 enable_supply_correction=None, cast=False):
+                 enable_supply_correction=None, cast=True):
     """
     Simulate the location choices for the specified choosers
 
@@ -478,7 +478,7 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
     print "    and %d overfull buildings" % len(vacant_units[vacant_units < 0])
 
 
-def simple_relocation(choosers, relocation_rate, fieldname, cast=False):
+def simple_relocation(choosers, relocation_rate, fieldname, cast=True):
     """
     Run a simple rate based relocation model
 
@@ -616,7 +616,8 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg):
     DataFrame of parcels
     """
 
-    pf = sqftproforma.SqFtProForma.from_yaml(cfg)
+    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+          else sqftproforma.SqFtProForma.from_defaults())
     df = parcels.to_frame()
 
     if pf.parcel_filter:
@@ -639,9 +640,9 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
 
     Parameters
     ----------
-    parcels : DataFrame Wrapper
+    df : DataFrame Wrapper
         The data frame wrapper for the parcel data
-    parcel_price_callback : function
+    parcel_use_allowed_callback : function
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
     cfg : The name of the yaml file to read pro forma configurations from
@@ -651,9 +652,10 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
     DataFrame of parcels
     """
 
-    pf = sqftproforma.SqFtProForma.from_yaml(cfg)
+    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+          else sqftproforma.SqFtProForma.from_defaults())
 
-    lookup_results_by_form = {}
+    lookup_results = {}
 
     forms = pf.forms_to_test or pf.forms
     for form in forms:
@@ -662,8 +664,8 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
 
         newdf = df[allowed]
 
-        #TODO move to proforma model
-        if simple_zoning:
+        # TODO move to proforma model
+        if pf.simple_zoning:
             if form == "residential":
                 # these are new computed in the effective max_dua method
                 newdf["max_far"] = pd.Series()
@@ -673,25 +675,24 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
                 newdf["max_dua"] = pd.Series()
                 newdf["max_height"] = pd.Series()
 
-        #TODO move last two params to pro forma model
-        d[form] = pf.lookup(form, newdf, only_built=pf.only_built,
-                            pass_through=pf.pass_through)
+        # TODO move last two params to pro forma model
+        lookup_results[form] = pf.lookup(form, newdf,
+                                                 only_built=pf.only_built,
+                                                 pass_through=pf.pass_through)
 
-        #TODO move to proforma model
+        # TODO move to proforma model
         if pf.residential_to_yearly and "residential" in pf.pass_through:
-            d[form]["residential"] /= pf.config.cap_rate
+            lookup_results[form]["residential"] /= pf.cap_rate
 
-    feasibility = pd.concat(lookup_results_by_form.values(),
-                            keys=lookup_results_by_form.keys(),
+    feasibility = pd.concat(lookup_results.values(),
+                            keys=lookup_results.keys(),
                             axis=1)
 
     return feasibility
 
 
 def run_feasibility(parcels, parcel_price_callback,
-                    parcel_use_allowed_callback, residential_to_yearly=True,
-                    parcel_filter=None, only_built=True, forms_to_test=None,
-                    cfg=None, pass_through=[], simple_zoning=False):
+                    parcel_use_allowed_callback, cfg=None):
     """
     Execute development feasibility on all parcels
 

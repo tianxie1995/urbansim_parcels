@@ -1,5 +1,6 @@
 import os
 import time
+import random
 
 import numpy as np
 import orca
@@ -7,32 +8,32 @@ import pandana as pdna
 import pandas as pd
 from urbansim.utils import misc
 from urbansim.utils import networks
-from urbansim_defaults import utils
 
+import utils
 import datasources
 import variables
 
 
 @orca.step('rsh_estimate')
-def rsh_estimate(homesales, aggregations):
-    return utils.hedonic_estimate("rsh.yaml", homesales, aggregations)
+def rsh_estimate(buildings, aggregations):
+    return utils.hedonic_estimate("rsh.yaml", buildings, aggregations)
 
 
 @orca.step('rsh_simulate')
 def rsh_simulate(buildings, aggregations):
     return utils.hedonic_simulate("rsh.yaml", buildings, aggregations,
-                                  "residential_price")
+                                  "residential_sales_price")
 
 
 @orca.step('nrh_estimate')
-def nrh_estimate(costar, aggregations):
-    return utils.hedonic_estimate("nrh.yaml", costar, aggregations)
+def nrh_estimate(buildings, aggregations):
+    return utils.hedonic_estimate("nrh.yaml", buildings, aggregations)
 
 
 @orca.step('nrh_simulate')
 def nrh_simulate(buildings, aggregations):
     return utils.hedonic_simulate("nrh.yaml", buildings, aggregations,
-                                  "non_residential_price")
+                                  "non_residential_rent")
 
 
 @orca.step('hlcm_estimate')
@@ -135,14 +136,13 @@ def price_vars(net):
 
 
 @orca.step('feasibility')
-def feasibility(parcels, settings,
+def feasibility(parcels,
                 parcel_sales_price_sqft_func,
                 parcel_is_allowed_func):
-    kwargs = settings['feasibility']
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
-                          **kwargs)
+                          cfg=None)
 
 
 @orca.injectable("add_extra_columns_func", autocall=False)
