@@ -732,113 +732,12 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     return old_buildings
 
 
-def run_developer(forms, agents, buildings, supply_fname, parcel_size,
-                  ave_unit_size, total_units, feasibility, cfg=None, year=None,
-                  target_vacancy=.1, form_to_btype_callback=None,
-                  add_more_columns_callback=None,
-                  remove_developed_buildings=True,
-                  unplace_agents=['households', 'jobs'],
-                  num_units_to_build=None, profit_to_prob_func=None):
-    """
-    Run the developer model to pick and build buildings
-
-    Parameters
-    ----------
-    forms : string or list of strings
-        Passed directly dev.pick
-    agents : DataFrame Wrapper
-        Used to compute the current demand for units/floorspace in the area
-    buildings : DataFrame Wrapper
-        Used to compute the current supply of units/floorspace in the area
-    supply_fname : string
-        Identifies the column in buildings which indicates the supply of
-        units/floorspace
-    parcel_size : Series
-        Passed directly to dev.pick
-    ave_unit_size : Series
-        Passed directly to dev.pick - average residential unit size
-    total_units : Series
-        Passed directly to dev.pick - total current residential_units /
-        job_spaces
-    feasibility : DataFrame Wrapper
-        The output from feasibility above (the table called 'feasibility')
-    year : int
-        The year of the simulation - will be assigned to 'year_built' on the
-        new buildings
-    target_vacancy : float
-        The target vacancy rate - used to determine how much to build
-    form_to_btype_callback : function
-        Will be used to convert the 'forms' in the pro forma to
-        'building_type_id' in the larger model
-    add_more_columns_callback : function
-        Takes a dataframe and returns a dataframe - is used to make custom
-        modifications to the new buildings that get added
-    remove_developed_buildings : optional, boolean (default True)
-        Remove all buildings on the parcels which are being developed on
-    unplace_agents : optional , list of strings (default ['households', 'jobs'])
-        For all tables in the list, will look for field building_id and set
-        it to -1 for buildings which are removed - only executed if
-        remove_developed_buildings is true
-    num_units_to_build: optional, int
-        If num_units_to_build is passed, build this many units rather than
-        computing it internally by using the length of agents adn the sum of
-        the relevant supply columin - this trusts the caller to know how to compute
-        this.
-    profit_to_prob_func: func
-        Passed directly to dev.pick
-
-    Returns
-    -------
-    Writes the result back to the buildings table and returns the new
-    buildings with available debugging information on each new building
-    """
-
-    cfg = misc.config(cfg) if cfg else None
-
-    dev = developer.Developer(feasibility.to_frame())
-
-    target_units = (num_units_to_build or
-                    dev.compute_units_to_build(len(agents),
-                                               buildings[supply_fname].sum(),
-                                               target_vacancy))
-
-    print "{:,} feasible buildings before running developer".format(
-        len(dev.feasibility))
-
-    new_buildings = dev.pick(forms,
-                             target_units,
-                             parcel_size,
-                             ave_unit_size,
-                             total_units,
-                             profit_to_prob_func=profit_to_prob_func)
-
-    # TODO Why do we do this?
-    orca.add_table("feasibility", dev.feasibility)
-
-    # TODO move into helper function in this module
-    if new_buildings is None:
-        return
-
-    # TODO move into helper function in this module
-    if len(new_buildings) == 0:
-        return new_buildings
-
-    # TODO move this into developer
-    if year is not None:
-        new_buildings["year_built"] = year
-
-    # TODO move this into developer
-    if not isinstance(forms, list):
-        # form gets set only if forms is a list
-        new_buildings["form"] = forms
+def process_new_buildings():
 
     # TODO move into helper function in this module
     if form_to_btype_callback is not None:
         new_buildings["building_type_id"] = new_buildings. \
             apply(form_to_btype_callback, axis=1)
-
-    # TODO move this into developer
-    new_buildings["stories"] = new_buildings.stories.apply(np.ceil)
 
     ret_buildings = new_buildings
     if add_more_columns_callback is not None:
@@ -865,9 +764,11 @@ def run_developer(forms, agents, buildings, supply_fname, parcel_size,
                                          return_index=True)
     ret_buildings.index = new_index
 
-    orca.add_table("buildings", all_buildings)
+    return all_buildings, ret_buildings
 
-    # TODO move into helper function in this module
+
+def add_new_units():
+
     if "residential_units" in orca.list_tables() and residential:
         # need to add units to the units table as well
         old_units = orca.get_table("residential_units")
@@ -893,6 +794,84 @@ def run_developer(forms, agents, buildings, supply_fname, parcel_size,
         return ret_buildings
         # pondered returning ret_buildings, new_units but users can get_table
         # the units if they want them - better to avoid breaking the api
+
+
+def run_developer(forms, agents, buildings, feasibility,
+                  parcel_size, ave_unit_size, current_units, cfg, year=None,
+                  form_to_btype_callback=None, add_more_columns_callback=None,
+                  remove_developed_buildings=True,
+                  unplace_agents=['households', 'jobs'],
+                  profit_to_prob_func=None):
+    """
+    Run the developer model to pick and build buildings
+
+    Parameters
+    ----------
+    forms : string or list of strings
+        Passed directly dev.pick
+    agents : DataFrame Wrapper
+        Used to compute the current demand for units/floorspace in the area
+    buildings : DataFrame Wrapper
+        Used to compute the current supply of units/floorspace in the area
+    feasibility : DataFrame Wrapper
+        The output from feasibility above (the table called 'feasibility')
+    parcel_size : series
+        The size of the parcels.  This was passed to feasibility as well,
+        but should be passed here as well.  Index should be parcel_ids.
+    ave_unit_size : series
+        The average residential unit size around each parcel - this is
+        indexed by parcel, but is usually a disaggregated version of a
+        zonal or accessibility aggregation.
+    current_units : series
+        The current number of units on the parcel.  Is used to compute the
+        net number of units produced by the developer model.  Many times
+        the developer model is redeveloping units (demolishing them) and
+        is trying to meet a total number of net units produced.
+    year : int
+        The year of the simulation - will be assigned to 'year_built' on the
+        new buildings
+    form_to_btype_callback : function
+        Will be used to convert the 'forms' in the pro forma to
+        'building_type_id' in the larger model
+    add_more_columns_callback : function
+        Takes a dataframe and returns a dataframe - is used to make custom
+        modifications to the new buildings that get added
+    remove_developed_buildings : optional, boolean (default True)
+        Remove all buildings on the parcels which are being developed on
+    unplace_agents : optional , list of strings (default ['households', 'jobs'])
+        For all tables in the list, will look for field building_id and set
+        it to -1 for buildings which are removed - only executed if
+        remove_developed_buildings is true
+    profit_to_prob_func: func
+        Passed directly to dev.pick
+
+    Returns
+    -------
+    Writes the result back to the buildings table and returns the new
+    buildings with available debugging information on each new building
+    """
+
+    cfg = misc.config(cfg)
+    dev = developer.Developer.from_yaml(forms, agents, buildings,
+                                        feasibility, parcel_size,
+                                        ave_unit_size, current_units, cfg)
+
+    print "{:,} feasible buildings before running developer".format(
+        len(dev.feasibility))
+
+    new_buildings = dev.pick(profit_to_prob_func)
+    orca.add_table("feasibility", dev.feasibility)
+
+    if new_buildings is None:
+        return
+
+    if len(new_buildings) == 0:
+        return new_buildings
+
+    all_buildings, ret_buildings = process_new_buildings(new_buildings, dev)
+    add_new_units(ret_buildings)
+
+    orca.add_table("buildings", all_buildings)
 
     return ret_buildings
 
