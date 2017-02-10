@@ -733,11 +733,10 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
 
 
 def run_developer(forms, agents, buildings, supply_fname, parcel_size,
-                  ave_unit_size, total_units, feasibility, year=None,
+                  ave_unit_size, total_units, feasibility, cfg=None, year=None,
                   target_vacancy=.1, form_to_btype_callback=None,
-                  add_more_columns_callback=None, max_parcel_size=2000000,
-                  residential=True, bldg_sqft_per_job=400.0,
-                  min_unit_size=400, remove_developed_buildings=True,
+                  add_more_columns_callback=None,
+                  remove_developed_buildings=True,
                   unplace_agents=['households', 'jobs'],
                   num_units_to_build=None, profit_to_prob_func=None):
     """
@@ -774,18 +773,7 @@ def run_developer(forms, agents, buildings, supply_fname, parcel_size,
     add_more_columns_callback : function
         Takes a dataframe and returns a dataframe - is used to make custom
         modifications to the new buildings that get added
-    max_parcel_size : float
-        Passed directly to dev.pick - max parcel size to consider
-    min_unit_size : float
-        Passed directly to dev.pick - min unit size that is valid
-    residential : boolean
-        Passed directly to dev.pick - switches between adding/computing
-        residential_units and job_spaces
-    bldg_sqft_per_job : float
-        Passed directly to dev.pick - specified the multiplier between
-        floor spaces and job spaces for this form (does not vary by parcel
-        as ave_unit_size does)
-    remove_redeveloped_buildings : optional, boolean (default True)
+    remove_developed_buildings : optional, boolean (default True)
         Remove all buildings on the parcels which are being developed on
     unplace_agents : optional , list of strings (default ['households', 'jobs'])
         For all tables in the list, will look for field building_id and set
@@ -805,12 +793,14 @@ def run_developer(forms, agents, buildings, supply_fname, parcel_size,
     buildings with available debugging information on each new building
     """
 
+    cfg = misc.config(cfg) if cfg else None
+
     dev = developer.Developer(feasibility.to_frame())
 
-    target_units = num_units_to_build or dev. \
-        compute_units_to_build(len(agents),
-                               buildings[supply_fname].sum(),
-                               target_vacancy)
+    target_units = (num_units_to_build or
+                    dev.compute_units_to_build(len(agents),
+                                               buildings[supply_fname].sum(),
+                                               target_vacancy))
 
     print "{:,} feasible buildings before running developer".format(
         len(dev.feasibility))
@@ -820,38 +810,41 @@ def run_developer(forms, agents, buildings, supply_fname, parcel_size,
                              parcel_size,
                              ave_unit_size,
                              total_units,
-                             max_parcel_size=max_parcel_size,
-                             min_unit_size=min_unit_size,
-                             drop_after_build=True,
-                             residential=residential,
-                             bldg_sqft_per_job=bldg_sqft_per_job,
                              profit_to_prob_func=profit_to_prob_func)
 
+    # TODO Why do we do this?
     orca.add_table("feasibility", dev.feasibility)
 
+    # TODO move into helper function in this module
     if new_buildings is None:
         return
 
+    # TODO move into helper function in this module
     if len(new_buildings) == 0:
         return new_buildings
 
+    # TODO move this into developer
     if year is not None:
         new_buildings["year_built"] = year
 
+    # TODO move this into developer
     if not isinstance(forms, list):
         # form gets set only if forms is a list
         new_buildings["form"] = forms
 
+    # TODO move into helper function in this module
     if form_to_btype_callback is not None:
         new_buildings["building_type_id"] = new_buildings. \
             apply(form_to_btype_callback, axis=1)
 
+    # TODO move this into developer
     new_buildings["stories"] = new_buildings.stories.apply(np.ceil)
 
     ret_buildings = new_buildings
     if add_more_columns_callback is not None:
         new_buildings = add_more_columns_callback(new_buildings)
 
+    # TODO move into helper function in this module
     print "Adding {:,} buildings with {:,} {}". \
         format(len(new_buildings),
                int(new_buildings[supply_fname].sum()),
@@ -874,6 +867,7 @@ def run_developer(forms, agents, buildings, supply_fname, parcel_size,
 
     orca.add_table("buildings", all_buildings)
 
+    # TODO move into helper function in this module
     if "residential_units" in orca.list_tables() and residential:
         # need to add units to the units table as well
         old_units = orca.get_table("residential_units")
