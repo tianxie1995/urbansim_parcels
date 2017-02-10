@@ -147,7 +147,8 @@ def feasibility(parcels,
 
 @orca.injectable("add_extra_columns_func", autocall=False)
 def add_extra_columns(df):
-    for col in ["residential_price", "non_residential_price"]:
+    for col in ["residential_price", "non_residential_price",
+                'residential_sales_price', 'non_residential_rent']:
         df[col] = 0
     return df
 
