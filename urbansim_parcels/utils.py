@@ -732,57 +732,67 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     return old_buildings
 
 
-def process_new_buildings():
+def process_new_buildings(developer, buildings, new_buildings,
+                          form_to_btype_callback,
+                          add_more_columns_callback):
 
-    # TODO move into helper function in this module
+    cfg = developer.to_dict
+
     if form_to_btype_callback is not None:
-        new_buildings["building_type_id"] = new_buildings. \
-            apply(form_to_btype_callback, axis=1)
+        new_buildings["building_type_id"] = new_buildings.apply(
+            form_to_btype_callback, axis=1)
 
     ret_buildings = new_buildings
     if add_more_columns_callback is not None:
         new_buildings = add_more_columns_callback(new_buildings)
 
-    # TODO move into helper function in this module
-    print "Adding {:,} buildings with {:,} {}". \
-        format(len(new_buildings),
-               int(new_buildings[supply_fname].sum()),
-               supply_fname)
+    print "Adding {:,} buildings with {:,} {}".format(
+        len(new_buildings), int(new_buildings[cfg['supply_fname']].sum()),
+        cfg['supply_fname'])
 
     print "{:,} feasible buildings after running developer".format(
-        len(dev.feasibility))
+        len(developer.feasibility))
 
     old_buildings = buildings.to_frame(buildings.local_columns)
     new_buildings = new_buildings[buildings.local_columns]
 
-    if remove_developed_buildings:
-        old_buildings = \
-            _remove_developed_buildings(old_buildings, new_buildings,
-                                        unplace_agents)
+    if cfg['remove_developed_buildings']:
+        old_buildings = _remove_developed_buildings(
+            old_buildings, new_buildings, cfg['unplace_agents'])
 
-    all_buildings, new_index = dev.merge(old_buildings, new_buildings,
-                                         return_index=True)
+    all_buildings, new_index = developer.merge(old_buildings, new_buildings,
+                                               return_index=True)
     ret_buildings.index = new_index
 
     return all_buildings, ret_buildings
 
 
-def add_new_units():
+def add_new_units(dev, new_buildings):
 
-    if "residential_units" in orca.list_tables() and residential:
+    config = dev.to_dict
+
+    if "residential_units" in orca.list_tables() and config['residential']:
         # need to add units to the units table as well
         old_units = orca.get_table("residential_units")
         old_units = old_units.to_frame(old_units.local_columns)
+
+        unit_num = np.concatenate(
+            [np.arange(i) for i in new_buildings.residential_units.values])
+
+        building_id = np.repeat(
+            new_buildings.index.values,
+            new_buildings.residential_units.astype('int32').values)
+
         new_units = pd.DataFrame({
             "unit_residential_price": 0,
             "num_units": 1,
             "deed_restricted": 0,
-            "unit_num": np.concatenate([np.arange(i) for i in \
-                                        new_buildings.residential_units.values]),
-            "building_id": np.repeat(new_buildings.index.values,
-                                     new_buildings.residential_units. \
-                                     astype('int32').values)
-        }).sort(columns=["building_id", "unit_num"]).reset_index(drop=True)
+            "unit_num": unit_num,
+            "building_id": building_id
+        })
+
+        new_units.sort(columns=["building_id", "unit_num"], inplace=True)
+        new_units.reset_index(drop=True, inplace=True)
 
         print "Adding {:,} units to the residential_units table". \
             format(len(new_units))
@@ -791,16 +801,10 @@ def add_new_units():
 
         orca.add_table("residential_units", all_units)
 
-        return ret_buildings
-        # pondered returning ret_buildings, new_units but users can get_table
-        # the units if they want them - better to avoid breaking the api
-
 
 def run_developer(forms, agents, buildings, feasibility,
                   parcel_size, ave_unit_size, current_units, cfg, year=None,
                   form_to_btype_callback=None, add_more_columns_callback=None,
-                  remove_developed_buildings=True,
-                  unplace_agents=['households', 'jobs'],
                   profit_to_prob_func=None):
     """
     Run the developer model to pick and build buildings
@@ -836,12 +840,6 @@ def run_developer(forms, agents, buildings, feasibility,
     add_more_columns_callback : function
         Takes a dataframe and returns a dataframe - is used to make custom
         modifications to the new buildings that get added
-    remove_developed_buildings : optional, boolean (default True)
-        Remove all buildings on the parcels which are being developed on
-    unplace_agents : optional , list of strings (default ['households', 'jobs'])
-        For all tables in the list, will look for field building_id and set
-        it to -1 for buildings which are removed - only executed if
-        remove_developed_buildings is true
     profit_to_prob_func: func
         Passed directly to dev.pick
 
@@ -854,7 +852,8 @@ def run_developer(forms, agents, buildings, feasibility,
     cfg = misc.config(cfg)
     dev = developer.Developer.from_yaml(forms, agents, buildings,
                                         feasibility, parcel_size,
-                                        ave_unit_size, current_units, cfg)
+                                        ave_unit_size, current_units,
+                                        year, str_or_buffer=cfg)
 
     print "{:,} feasible buildings before running developer".format(
         len(dev.feasibility))
@@ -868,8 +867,12 @@ def run_developer(forms, agents, buildings, feasibility,
     if len(new_buildings) == 0:
         return new_buildings
 
-    all_buildings, ret_buildings = process_new_buildings(new_buildings, dev)
-    add_new_units(ret_buildings)
+    all_buildings, ret_buildings = (
+        process_new_buildings(dev, buildings, new_buildings,
+                              form_to_btype_callback,
+                              add_more_columns_callback))
+
+    add_new_units(dev, ret_buildings)
 
     orca.add_table("buildings", all_buildings)
 
