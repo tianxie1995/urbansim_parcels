@@ -7,7 +7,7 @@ from urbansim.models import RegressionModel, SegmentedRegressionModel, \
     MNLDiscreteChoiceModel, SegmentedMNLDiscreteChoiceModel, \
     GrowthRateTransition, transition
 from urbansim.models.supplydemand import supply_and_demand
-from urbansim.developer import sqftproforma, developer
+from developer import sqftproforma, developer
 from urbansim.utils import misc
 
 
@@ -314,7 +314,7 @@ def lcm_estimate(cfg, choosers, chosen_fname, buildings, join_tbls,
 
 def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
                  supply_fname, vacant_fname,
-                 enable_supply_correction=None, cast=False):
+                 enable_supply_correction=None, cast=True):
     """
     Simulate the location choices for the specified choosers
 
@@ -478,7 +478,7 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
     print "    and %d overfull buildings" % len(vacant_units[vacant_units < 0])
 
 
-def simple_relocation(choosers, relocation_rate, fieldname, cast=False):
+def simple_relocation(choosers, relocation_rate, fieldname, cast=True):
     """
     Run a simple rate based relocation model
 
@@ -598,10 +598,83 @@ def _print_number_unplaced(df, fieldname):
           df[fieldname].value_counts().get(-1, 0)
 
 
+def prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg):
+    """
+    Prepare parcel DataFrame for feasibility analysis
+
+    Parameters
+    ----------
+    parcels : DataFrame Wrapper
+        The data frame wrapper for the parcel data
+    parcel_price_callback : function
+        A callback which takes each use of the pro forma and returns a series
+        with index as parcel_id and value as yearly_rent
+    cfg : The name of the yaml file to read pro forma configurations from
+
+    Returns
+    -------
+    DataFrame of parcels
+    """
+
+    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+          else sqftproforma.SqFtProForma.from_defaults())
+    df = parcels.to_frame()
+
+    if pf.parcel_filter:
+        df = df.query(pf.parcel_filter)
+
+    # add prices for each use
+    for use in pf.uses:
+        df[use] = parcel_price_callback(use)
+
+    # convert from cost to yearly rent
+    if pf.residential_to_yearly and 'residential' in df.columns:
+        df["residential"] *= pf.cap_rate
+
+    return df
+
+
+def lookup_by_form(df, parcel_use_allowed_callback, cfg):
+    """
+    Execute development feasibility on all parcels
+
+    Parameters
+    ----------
+    df : DataFrame Wrapper
+        The data frame wrapper for the parcel data
+    parcel_use_allowed_callback : function
+        A callback which takes each use of the pro forma and returns a series
+        with index as parcel_id and value as yearly_rent
+    cfg : The name of the yaml file to read pro forma configurations from
+
+    Returns
+    -------
+    DataFrame of parcels
+    """
+
+    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+          else sqftproforma.SqFtProForma.from_defaults())
+
+    lookup_results = {}
+
+    forms = pf.forms_to_test or pf.forms
+    for form in forms:
+        print "Computing feasibility for form %s" % form
+        allowed = parcel_use_allowed_callback(form).loc[df.index]
+
+        newdf = df[allowed]
+
+        lookup_results[form] = pf.lookup(form, newdf)
+
+    feasibility = pd.concat(lookup_results.values(),
+                            keys=lookup_results.keys(),
+                            axis=1)
+
+    return feasibility
+
+
 def run_feasibility(parcels, parcel_price_callback,
-                    parcel_use_allowed_callback, residential_to_yearly=True,
-                    parcel_filter=None, only_built=True, forms_to_test=None,
-                    config=None, pass_through=[], simple_zoning=False):
+                    parcel_use_allowed_callback, cfg=None):
     """
     Execute development feasibility on all parcels
 
@@ -616,81 +689,17 @@ def run_feasibility(parcels, parcel_price_callback,
         A callback which takes each form of the pro forma and returns a series
         with index as parcel_id and value and boolean whether the form
         is allowed on the parcel
-    residential_to_yearly : boolean (default true)
-        Whether to use the cap rate to convert the residential price from total
-        sales price per sqft to rent per sqft
-    parcel_filter : string
-        A filter to apply to the parcels data frame to remove parcels from
-        consideration - is typically used to remove parcels with buildings
-        older than a certain date for historical preservation, but is
-        generally useful
-    only_built : boolean
-        Only return those buildings that are profitable - only those buildings
-        that "will be built"
-    forms_to_test : list of strings (optional)
-        Pass the list of the names of forms to test for feasibility - if set to
-        None will use all the forms available in ProFormaConfig
-    config : SqFtProFormaConfig configuration object.  Optional.  Defaults to
-        None
-    pass_through : list of strings
-        Will be passed to the feasibility lookup function - is used to pass
-        variables from the parcel dataframe to the output dataframe, usually
-        for debugging
-    simple_zoning: boolean, optional
-        This can be set to use only max_dua for residential and max_far for
-        non-residential.  This can be handy if you want to deal with zoning
-        outside of the developer model.
+    cfg : The name of the yaml file to read pro forma configurations from
 
     Returns
     -------
     Adds a table called feasibility to the sim object (returns nothing)
     """
 
-    pf = sqftproforma.SqFtProForma(config) if config \
-        else sqftproforma.SqFtProForma()
-
-    df = parcels.to_frame()
-
-    if parcel_filter:
-        df = df.query(parcel_filter)
-
-    # add prices for each use
-    for use in pf.config.uses:
-        # assume we can get the 80th percentile price for new development
-        df[use] = parcel_price_callback(use)
-
-    # convert from cost to yearly rent
-    if residential_to_yearly:
-        df["residential"] *= pf.config.cap_rate
-
-    print "Describe of the yearly rent by use"
-    print df[pf.config.uses].describe()
-
-    d = {}
-    forms = forms_to_test or pf.config.forms
-    for form in forms:
-        print "Computing feasibility for form %s" % form
-        allowed = parcel_use_allowed_callback(form).loc[df.index]
-
-        newdf = df[allowed]
-        if simple_zoning:
-            if form == "residential":
-                # these are new computed in the effective max_dua method
-                newdf["max_far"] = pd.Series()
-                newdf["max_height"] = pd.Series()
-            else:
-                # these are new computed in the effective max_far method
-                newdf["max_dua"] = pd.Series()
-                newdf["max_height"] = pd.Series()
-
-        d[form] = pf.lookup(form, newdf, only_built=only_built,
-                            pass_through=pass_through)
-        if residential_to_yearly and "residential" in pass_through:
-            d[form]["residential"] /= pf.config.cap_rate
-
-    far_predictions = pd.concat(d.values(), keys=d.keys(), axis=1)
-
-    orca.add_table("feasibility", far_predictions)
+    cfg = misc.config(cfg) if cfg else None
+    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg)
+    feasibility = lookup_by_form(df, parcel_use_allowed_callback, cfg)
+    orca.add_table('feasibility', feasibility)
 
 
 def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):

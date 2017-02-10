@@ -55,3 +55,6 @@ docs/_build/
 
 # Intellij
 .idea
+
+# Runs
+RUNNUM

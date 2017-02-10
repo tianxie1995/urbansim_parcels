@@ -1,5 +1,6 @@
 import os
 import time
+import random
 
 import numpy as np
 import orca
@@ -7,32 +8,32 @@ import pandana as pdna
 import pandas as pd
 from urbansim.utils import misc
 from urbansim.utils import networks
-from urbansim_defaults import utils
 
+import utils
 import datasources
 import variables
 
 
 @orca.step('rsh_estimate')
-def rsh_estimate(homesales, aggregations):
-    return utils.hedonic_estimate("rsh.yaml", homesales, aggregations)
+def rsh_estimate(buildings, aggregations):
+    return utils.hedonic_estimate("rsh.yaml", buildings, aggregations)
 
 
 @orca.step('rsh_simulate')
 def rsh_simulate(buildings, aggregations):
     return utils.hedonic_simulate("rsh.yaml", buildings, aggregations,
-                                  "residential_price")
+                                  "residential_sales_price")
 
 
 @orca.step('nrh_estimate')
-def nrh_estimate(costar, aggregations):
-    return utils.hedonic_estimate("nrh.yaml", costar, aggregations)
+def nrh_estimate(buildings, aggregations):
+    return utils.hedonic_estimate("nrh.yaml", buildings, aggregations)
 
 
 @orca.step('nrh_simulate')
 def nrh_simulate(buildings, aggregations):
     return utils.hedonic_simulate("nrh.yaml", buildings, aggregations,
-                                  "non_residential_price")
+                                  "non_residential_rent")
 
 
 @orca.step('hlcm_estimate')
@@ -135,14 +136,13 @@ def price_vars(net):
 
 
 @orca.step('feasibility')
-def feasibility(parcels, settings,
+def feasibility(parcels,
                 parcel_sales_price_sqft_func,
-                parcel_is_allowed_func):
-    kwargs = settings['feasibility']
+                parcel_is_allowed_func, proforma):
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
-                          **kwargs)
+                          cfg=proforma)
 
 
 @orca.injectable("add_extra_columns_func", autocall=False)
@@ -178,7 +178,6 @@ def residential_developer(feasibility, households, buildings, parcels, year,
 def non_residential_developer(feasibility, jobs, buildings, parcels, year,
                               settings, summary, form_to_btype_func,
                               add_extra_columns_func):
-
     kwargs = settings['non_residential_developer']
     new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
@@ -199,15 +198,19 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
 
 
 @orca.step("scheduled_development_events")
-def scheduled_development_events(buildings, development_projects, summary, year):
+def scheduled_development_events(buildings, development_projects, summary,
+                                 year):
     dps = development_projects.to_frame().query("year_built == %d" % year)
 
     if len(dps) == 0:
         return
 
-    new_buildings = utils.scheduled_development_events(buildings, dps,
-                                       remove_developed_buildings=True,
-                                       unplace_agents=['households', 'jobs'])
+    new_buildings = utils.scheduled_development_events(
+        buildings, dps,
+        remove_developed_buildings=True,
+        unplace_agents=[
+            'households',
+            'jobs'])
 
     summary.add_parcel_output(new_buildings)
 
@@ -220,37 +223,43 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
     zones = zones.to_frame()
 
     zones['zoned_du'] = parcels.groupby('zone_id').zoned_du.sum()
-    zones['zoned_du_underbuild'] = parcels.groupby('zone_id').\
-        zoned_du_underbuild.sum()
-    zones['zoned_du_underbuild_ratio'] = zones.zoned_du_underbuild /\
-        zones.zoned_du
+    zones['zoned_du_underbuild'] = (parcels.groupby('zone_id').
+                                    zoned_du_underbuild.sum())
+    zones['zoned_du_underbuild_ratio'] = (zones.zoned_du_underbuild /
+                                          zones.zoned_du)
 
-    zones['residential_units'] = buildings.groupby('zone_id').\
-        residential_units.sum()
-    zones['non_residential_sqft'] = buildings.groupby('zone_id').\
-        non_residential_sqft.sum()
+    zones['residential_units'] = (buildings.groupby('zone_id').
+                                  residential_units.sum())
+    zones['non_residential_sqft'] = (buildings.groupby('zone_id').
+                                     non_residential_sqft.sum())
 
-    zones['retail_sqft'] = buildings.query('general_type == "Retail"').\
-        groupby('zone_id').non_residential_sqft.sum()
-    zones['office_sqft'] = buildings.query('general_type == "Office"').\
-        groupby('zone_id').non_residential_sqft.sum()
-    zones['industrial_sqft'] = buildings.query('general_type == "Industrial"').\
-        groupby('zone_id').non_residential_sqft.sum()
+    zones['retail_sqft'] = (buildings.query('general_type == "Retail"').
+                            groupby('zone_id').non_residential_sqft.sum())
+    zones['office_sqft'] = (buildings.query('general_type == "Office"').
+                            groupby('zone_id').non_residential_sqft.sum())
+    zones['industrial_sqft'] = (
+        buildings.query('general_type == "Industrial"').
+            groupby('zone_id').non_residential_sqft.sum())
 
     zones['average_income'] = households.groupby('zone_id').income.quantile()
     zones['household_size'] = households.groupby('zone_id').persons.quantile()
 
-    zones['building_count'] = buildings.\
-        query('general_type == "Residential"').groupby('zone_id').size()
-    zones['residential_price'] = buildings.\
-        query('general_type == "Residential"').groupby('zone_id').\
-        residential_price.quantile()
-    zones['retail_rent'] = buildings[buildings.general_type == "Retail"].\
-        groupby('zone_id').non_residential_price.quantile()
-    zones['office_rent'] = buildings[buildings.general_type == "Office"].\
-        groupby('zone_id').non_residential_price.quantile()
-    zones['industrial_rent'] = \
-        buildings[buildings.general_type == "Industrial"].\
-        groupby('zone_id').non_residential_price.quantile()
+    zones['building_count'] = (buildings.
+                               query('general_type == "Residential"').
+                               groupby('zone_id').size())
+    zones['residential_price'] = (buildings.
+                                  query('general_type == "Residential"').
+                                  groupby('zone_id').
+                                  residential_price.quantile())
+    zones['retail_rent'] = (buildings[buildings.general_type == "Retail"].
+                            groupby('zone_id').
+                            non_residential_price.quantile())
+    zones['office_rent'] = (buildings[buildings.general_type == "Office"].
+                            groupby('zone_id').
+                            non_residential_price.quantile())
+    zones['industrial_rent'] = (buildings[
+                                    buildings.general_type == "Industrial"
+                                ].groupby('zone_id').
+                                non_residential_price.quantile())
 
     summary.add_zone_output(zones, "diagnostic_outputs", year)

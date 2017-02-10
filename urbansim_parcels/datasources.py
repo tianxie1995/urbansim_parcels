@@ -29,6 +29,16 @@ def settings():
         return settings
 
 
+@orca.injectable('proforma', cache=True)
+def proforma():
+    proforma_path = os.path.join(misc.configs_dir(), "proforma.yaml")
+    if os.path.exists(proforma_path):
+        with open(proforma_path) as f:
+            pf = yaml.load(f)
+            return pf
+    return None
+
+
 @orca.injectable('run_number', cache=True)
 def run_number():
     return misc.get_run_number()
@@ -64,6 +74,11 @@ def scenario(settings):
 @orca.injectable("scenario_inputs")
 def scenario_inputs(settings):
     return settings["scenario_inputs"]
+
+
+@orca.injectable('form_to_btype')
+def form_to_btype(settings):
+    return settings["form_to_btype"]
 
 
 @orca.injectable("aggregations")
@@ -168,6 +183,39 @@ def zones(store):
     return df
 
 
+# starts with the same underlying shapefile, but is used later in the simulation
+@orca.table('zones_prices', cache=True)
+def zones_prices(store):
+    df = store['zones']
+    return df
+
+
+# this is the mapping of parcels to zoning attributes
+@orca.table('zoning_for_parcels', cache=True)
+def zoning_for_parcels(store):
+    df = store['zoning_for_parcels']
+    df = df.reset_index().drop_duplicates(subset='parcel').set_index('parcel')
+    return df
+
+
+# this is the actual zoning
+@orca.table('zoning', cache=True)
+def zoning(store):
+    df = store['zoning']
+    return df
+
+
+# zoning for use in the "baseline" scenario
+# comes in the hdf5
+@orca.table('zoning_baseline', cache=True)
+def zoning_baseline(zoning, zoning_for_parcels):
+    df = pd.merge(zoning_for_parcels.to_frame(),
+                  zoning.to_frame(),
+                  left_on='zoning',
+                  right_index=True)
+    return df
+
+
 # these are dummy returns that last until accessibility runs
 @orca.table("nodes", cache=True)
 def nodes():
@@ -185,6 +233,8 @@ def logsums(settings):
 # this specifies the relationships between tables
 orca.broadcast('nodes', 'buildings', cast_index=True, onto_on='node_id')
 orca.broadcast('nodes', 'parcels', cast_index=True, onto_on='node_id')
+orca.broadcast('zones', 'buildings', cast_index=True, onto_on='zone_id')
+orca.broadcast('zones_prices', 'buildings', cast_index=True, onto_on='zone_id')
 orca.broadcast('logsums', 'buildings', cast_index=True, onto_on='zone_id')
 orca.broadcast('logsums', 'parcels', cast_index=True, onto_on='zone_id')
 orca.broadcast('parcels', 'buildings', cast_index=True, onto_on='parcel_id')
