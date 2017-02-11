@@ -689,7 +689,8 @@ def run_feasibility(parcels, parcel_price_callback,
         A callback which takes each form of the pro forma and returns a series
         with index as parcel_id and value and boolean whether the form
         is allowed on the parcel
-    cfg : The name of the yaml file to read pro forma configurations from
+    cfg : str
+        The name of the yaml file to read pro forma configurations from
 
     Returns
     -------
@@ -831,6 +832,8 @@ def run_developer(forms, agents, buildings, feasibility,
         net number of units produced by the developer model.  Many times
         the developer model is redeveloping units (demolishing them) and
         is trying to meet a total number of net units produced.
+    cfg : str
+        The name of the yaml file to read pro forma configurations from
     year : int
         The year of the simulation - will be assigned to 'year_built' on the
         new buildings
