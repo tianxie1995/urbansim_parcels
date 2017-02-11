@@ -850,7 +850,7 @@ def run_developer(forms, agents, buildings, feasibility,
     """
 
     cfg = misc.config(cfg)
-    dev = developer.Developer.from_yaml(forms, agents, buildings,
+    dev = developer.Developer.from_yaml(feasibility, forms, agents, buildings,
                                         feasibility.to_frame(), parcel_size,
                                         ave_unit_size, current_units,
                                         year, str_or_buffer=cfg)
