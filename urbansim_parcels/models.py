@@ -147,52 +147,49 @@ def feasibility(parcels,
 
 @orca.injectable("add_extra_columns_func", autocall=False)
 def add_extra_columns(df):
-    for col in ["residential_price", "non_residential_price"]:
+    for col in ["residential_price", "non_residential_price",
+                'residential_sales_price', 'non_residential_rent']:
         df[col] = 0
     return df
 
 
 @orca.step('residential_developer')
 def residential_developer(feasibility, households, buildings, parcels, year,
-                          settings, summary, form_to_btype_func,
-                          add_extra_columns_func):
-    kwargs = settings['residential_developer']
+                          summary, form_to_btype_func, add_extra_columns_func):
     new_buildings = utils.run_developer(
         "residential",
         households,
         buildings,
-        "residential_units",
+        feasibility,
         parcels.parcel_size,
         parcels.ave_sqft_per_unit,
         parcels.total_residential_units,
-        feasibility,
+        'res_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        **kwargs)
+        profit_to_prob_func=None)
 
     summary.add_parcel_output(new_buildings)
 
 
 @orca.step('non_residential_developer')
 def non_residential_developer(feasibility, jobs, buildings, parcels, year,
-                              settings, summary, form_to_btype_func,
+                              summary, form_to_btype_func,
                               add_extra_columns_func):
-    kwargs = settings['non_residential_developer']
     new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
         jobs,
         buildings,
-        "job_spaces",
+        feasibility,
         parcels.parcel_size,
         parcels.ave_sqft_per_unit,
         parcels.total_job_spaces,
-        feasibility,
+        'nonres_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        residential=False,
-        **kwargs)
+        profit_to_prob_func=None)
 
     summary.add_parcel_output(new_buildings)
 

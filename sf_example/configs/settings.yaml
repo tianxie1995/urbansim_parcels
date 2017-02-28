@@ -105,11 +105,3 @@ set_nan_price_to_zero: True
 reconcile_residential_units_and_households: False
 
 reconcile_non_residential_sqft_and_jobs: True
-
-residential_developer:
-  target_vacancy: .15
-  bldg_sqft_per_job: 400
-
-non_residential_developer:
-  target_vacancy: 0.15
-  bldg_sqft_per_job: 400

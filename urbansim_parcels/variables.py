@@ -30,7 +30,8 @@ def parcel_is_allowed(form):
 
 
 @orca.injectable('form_to_btype_func', autocall=False)
-def random_type(form):
+def random_type(row):
+    form = row['form']
     form_to_btype = orca.get_injectable("form_to_btype")
     return random.choice(form_to_btype[form])
 
