@@ -598,7 +598,7 @@ def _print_number_unplaced(df, fieldname):
           df[fieldname].value_counts().get(-1, 0)
 
 
-def prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg):
+def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -609,15 +609,14 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg):
     parcel_price_callback : function
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
-    cfg : The name of the yaml file to read pro forma configurations from
+    pf: SqFtProForma object
+        Pro forma object with relevant configurations
 
     Returns
     -------
     DataFrame of parcels
     """
 
-    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
-          else sqftproforma.SqFtProForma.from_defaults())
     df = parcels.to_frame()
 
     if pf.parcel_filter:
@@ -634,7 +633,7 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg):
     return df
 
 
-def lookup_by_form(df, parcel_use_allowed_callback, cfg):
+def lookup_by_form(df, parcel_use_allowed_callback, pf):
     """
     Execute development feasibility on all parcels
 
@@ -645,15 +644,13 @@ def lookup_by_form(df, parcel_use_allowed_callback, cfg):
     parcel_use_allowed_callback : function
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
-    cfg : The name of the yaml file to read pro forma configurations from
+    pf: SqFtProForma object
+        Pro forma object with relevant configurations
 
     Returns
     -------
     DataFrame of parcels
     """
-
-    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
-          else sqftproforma.SqFtProForma.from_defaults())
 
     lookup_results = {}
 
@@ -698,8 +695,10 @@ def run_feasibility(parcels, parcel_price_callback,
     """
 
     cfg = misc.config(cfg) if cfg else None
-    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, cfg)
-    feasibility = lookup_by_form(df, parcel_use_allowed_callback, cfg)
+    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+          else sqftproforma.SqFtProForma.from_defaults())
+    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf)
+    feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
     orca.add_table('feasibility', feasibility)
 
 
