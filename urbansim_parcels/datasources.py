@@ -34,7 +34,7 @@ def proforma():
     proforma_path = os.path.join(misc.configs_dir(), "proforma.yaml")
     if os.path.exists(proforma_path):
         with open(proforma_path) as f:
-            pf = yaml.load(f)
+            pf = f.read()
             return pf
     return None
 
