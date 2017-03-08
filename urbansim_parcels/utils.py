@@ -894,7 +894,6 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                                 buildings[supply_fname].sum(),
                                 target_vacancy))
 
-    # TODO remove agents, buildings from arguments below
     dev = developer.Developer.from_yaml(feasibility.to_frame(), forms,
                                         target_units, parcel_size,
                                         ave_unit_size, current_units,

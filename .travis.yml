@@ -14,8 +14,8 @@ install:
 - conda update -q conda
 - conda info -a
 - |
-  conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy=1.11 pandas pytest matplotlib scipy statsmodels
-- source activate test-environment
+  conda create -q -n tests-environment python=$TRAVIS_PYTHON_VERSION pip numpy=1.11 pandas pytest matplotlib scipy statsmodels
+- source activate tests-environment
 - conda list
 - pip install .
 - pip install https://github.com/UDST/urbansim/archive/master.zip
@@ -25,4 +25,5 @@ install:
 - pip install ./developer
 
 script:
+- py.test
 - cd $TRAVIS_BUILD_DIR/sf_example; python simulate.py
