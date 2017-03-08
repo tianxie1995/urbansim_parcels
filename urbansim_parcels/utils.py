@@ -801,10 +801,42 @@ def add_new_units(dev, new_buildings):
         orca.add_table("residential_units", all_units)
 
 
-def run_developer(forms, agents, buildings, feasibility,
+def _compute_units_to_build(num_agents, num_units, target_vacancy):
+    """
+    Compute number of units to build to match target vacancy.
+
+    Parameters
+    ----------
+    num_agents : int
+        number of agents that need units in the region
+    num_units : int
+        number of units in buildings
+    target_vacancy : float (0-1.0)
+        target vacancy rate
+
+    Returns
+    -------
+    number_of_units : int
+        the number of units that need to be built
+    """
+    print "Number of agents: {:,}".format(num_agents)
+    print "Number of agent spaces: {:,}".format(int(num_units))
+    assert target_vacancy < 1.0
+    target_units = int(max(
+        (num_agents / (1 - target_vacancy) - num_units), 0))
+    print "Current vacancy = {:.2f}".format(1 - num_agents /
+                                            float(num_units))
+    print "Target vacancy = {:.2f}, target of new units = {:,}".format(
+        target_vacancy,
+        target_units)
+    return target_units
+
+
+def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   parcel_size, ave_unit_size, current_units, cfg, year=None,
-                  form_to_btype_callback=None, add_more_columns_callback=None,
-                  profit_to_prob_func=None):
+                  target_vacancy=0.1, form_to_btype_callback=None,
+                  add_more_columns_callback=None,
+                  num_units_to_build=None, profit_to_prob_func=None):
     """
     Run the developer model to pick and build buildings
 
@@ -850,9 +882,21 @@ def run_developer(forms, agents, buildings, feasibility,
     buildings with available debugging information on each new building
     """
 
+    # TODO remove supply_fname and target_vacancy from developer cfg
+    # TODO remove remove_developed_buildings, unplace_agents from cfg
+    # TODO add all of above to parameters for this function
+    # add to settings??
     cfg = misc.config(cfg)
-    dev = developer.Developer.from_yaml(feasibility.to_frame(), forms, agents,
-                                        buildings, parcel_size,
+
+    target_units = (
+        num_units_to_build or
+        _compute_units_to_build(len(agents),
+                                buildings[supply_fname].sum(),
+                                target_vacancy))
+
+    # TODO remove agents, buildings from arguments below
+    dev = developer.Developer.from_yaml(feasibility.to_frame(), forms,
+                                        target_units, parcel_size,
                                         ave_unit_size, current_units,
                                         year, str_or_buffer=cfg)
 
