@@ -888,6 +888,9 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         Used to compute the current demand for units/floorspace in the area
     buildings : DataFrame Wrapper
         Used to compute the current supply of units/floorspace in the area
+    supply_fname : string
+        Identifies the column in buildings which indicates the supply of
+        units/floorspace
     feasibility : DataFrame Wrapper
         The output from feasibility above (the table called 'feasibility')
     parcel_size : series
@@ -907,12 +910,25 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     year : int
         The year of the simulation - will be assigned to 'year_built' on the
         new buildings
+    target_vacancy : float
+        The target vacancy rate - used to determine how much to build
     form_to_btype_callback : function
         Will be used to convert the 'forms' in the pro forma to
         'building_type_id' in the larger model
     add_more_columns_callback : function
         Takes a dataframe and returns a dataframe - is used to make custom
         modifications to the new buildings that get added
+    remove_developed_buildings : optional, boolean (default True)
+        Remove all buildings on the parcels which are being developed on
+    unplace_agents : optional, list of strings (default ['households', 'jobs'])
+        For all tables in the list, will look for field building_id and set
+        it to -1 for buildings which are removed - only executed if
+        remove_developed_buildings is true
+    num_units_to_build: optional, int
+        If num_units_to_build is passed, build this many units rather than
+        computing it internally by using the length of agents adn the sum of
+        the relevant supply columin - this trusts the caller to know how to
+        compute this.
     profit_to_prob_func: func
         Passed directly to dev.pick
 
