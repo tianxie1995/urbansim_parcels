@@ -795,13 +795,13 @@ def add_new_units(dev, new_buildings):
 
         print "Adding {:,} units to the residential_units table". \
             format(len(new_units))
-        all_units = dev.merge(old_units, new_units)
+        all_units = merge_buildings(old_units, new_units)
         all_units.index.name = "unit_id"
 
         orca.add_table("residential_units", all_units)
 
 
-def _compute_units_to_build(num_agents, num_units, target_vacancy):
+def compute_units_to_build(num_agents, num_units, target_vacancy):
     """
     Compute number of units to build to match target vacancy.
 
@@ -830,6 +830,44 @@ def _compute_units_to_build(num_agents, num_units, target_vacancy):
         target_vacancy,
         target_units)
     return target_units
+
+
+def merge_buildings(old_df, new_df, return_index=False):
+    """
+    Merge two dataframes of buildings.  The old dataframe is
+    usually the buildings dataset and the new dataframe is a modified
+    (by the user) version of what is returned by the pick method.
+
+    Parameters
+    ----------
+    old_df : dataframe
+        Current set of buildings
+    new_df : dataframe
+        New buildings to add, usually comes from this module
+    return_index : bool
+        If return_index is true, this method will return the new
+        index of new_df (which changes in order to create a unique
+        index after the merge)
+
+    Returns
+    -------
+    df : dataframe
+        Combined DataFrame of buildings, makes sure indexes don't overlap
+    index : pd.Index
+        If and only if return_index is True, return the new index for the
+        new_df dataframe (which changes in order to create a unique index
+        after the merge)
+    """
+    maxind = np.max(old_df.index.values)
+    new_df = new_df.reset_index(drop=True)
+    new_df.index = new_df.index + maxind + 1
+    concat_df = pd.concat([old_df, new_df], verify_integrity=True)
+    concat_df.index.name = 'building_id'
+
+    if return_index:
+        return concat_df, new_df.index
+
+    return concat_df
 
 
 def run_developer(forms, agents, buildings, supply_fname, feasibility,
@@ -890,9 +928,9 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
 
     target_units = (
         num_units_to_build or
-        _compute_units_to_build(len(agents),
-                                buildings[supply_fname].sum(),
-                                target_vacancy))
+        compute_units_to_build(len(agents),
+                               buildings[supply_fname].sum(),
+                               target_vacancy))
 
     dev = developer.Developer.from_yaml(feasibility.to_frame(), forms,
                                         target_units, parcel_size,
