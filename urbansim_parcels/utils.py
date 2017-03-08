@@ -731,11 +731,11 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     return old_buildings
 
 
-def process_new_buildings(developer, buildings, new_buildings,
+def process_new_buildings(buildings, new_buildings,
                           form_to_btype_callback,
-                          add_more_columns_callback):
-
-    cfg = developer.to_dict
+                          add_more_columns_callback,
+                          supply_fname, remove_developed_buildings,
+                          unplace_agents):
 
     if form_to_btype_callback is not None:
         new_buildings["building_type_id"] = new_buildings.apply(
@@ -746,8 +746,8 @@ def process_new_buildings(developer, buildings, new_buildings,
         new_buildings = add_more_columns_callback(new_buildings)
 
     print "Adding {:,} buildings with {:,} {}".format(
-        len(new_buildings), int(new_buildings[cfg['supply_fname']].sum()),
-        cfg['supply_fname'])
+        len(new_buildings), int(new_buildings[supply_fname].sum()),
+        supply_fname)
 
     print "{:,} feasible buildings after running developer".format(
         len(developer.feasibility))
@@ -755,9 +755,9 @@ def process_new_buildings(developer, buildings, new_buildings,
     old_buildings = buildings.to_frame(buildings.local_columns)
     new_buildings = new_buildings[buildings.local_columns]
 
-    if cfg['remove_developed_buildings']:
+    if remove_developed_buildings:
         old_buildings = _remove_developed_buildings(
-            old_buildings, new_buildings, cfg['unplace_agents'])
+            old_buildings, new_buildings, unplace_agents)
 
     all_buildings, new_index = developer.merge(old_buildings, new_buildings,
                                                return_index=True)
@@ -874,6 +874,8 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   parcel_size, ave_unit_size, current_units, cfg, year=None,
                   target_vacancy=0.1, form_to_btype_callback=None,
                   add_more_columns_callback=None,
+                  remove_developed_buildings=True,
+                  unplace_agents=['households', 'jobs'],
                   num_units_to_build=None, profit_to_prob_func=None):
     """
     Run the developer model to pick and build buildings
@@ -919,11 +921,6 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     Writes the result back to the buildings table and returns the new
     buildings with available debugging information on each new building
     """
-
-    # TODO remove supply_fname and target_vacancy from developer cfg
-    # TODO remove remove_developed_buildings, unplace_agents from cfg
-    # TODO add all of above to parameters for this function
-    # add to settings??
     cfg = misc.config(cfg)
 
     target_units = (
@@ -950,9 +947,11 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         return new_buildings
 
     all_buildings, ret_buildings = (
-        process_new_buildings(dev, buildings, new_buildings,
+        process_new_buildings(buildings, new_buildings,
                               form_to_btype_callback,
-                              add_more_columns_callback))
+                              add_more_columns_callback,
+                              supply_fname, remove_developed_buildings,
+                              unplace_agents))
 
     add_new_units(dev, ret_buildings)
 
