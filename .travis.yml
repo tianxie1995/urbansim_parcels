@@ -21,7 +21,7 @@ install:
 - pip install https://github.com/UDST/urbansim/archive/master.zip
 - pip install https://github.com/UDST/orca/archive/master.zip
 - pip install pandana
-- git clone -b refactor_developer git@github.com:urbansim/developer.git
+- git clone git@github.com:urbansim/developer.git
 - pip install ./developer
 
 script:
