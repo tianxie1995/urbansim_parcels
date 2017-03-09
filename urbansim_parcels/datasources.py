@@ -29,16 +29,6 @@ def settings():
         return settings
 
 
-@orca.injectable('proforma', cache=True)
-def proforma():
-    proforma_path = os.path.join(misc.configs_dir(), "proforma.yaml")
-    if os.path.exists(proforma_path):
-        with open(proforma_path) as f:
-            pf = f.read()
-            return pf
-    return None
-
-
 @orca.injectable('run_number', cache=True)
 def run_number():
     return misc.get_run_number()

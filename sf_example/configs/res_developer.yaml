@@ -1,7 +1,3 @@
-supply_fname: residential_units
-
-target_vacancy: 0.1
-
 bldg_sqft_per_job: 400.0
 
 min_unit_size: 400
@@ -11,14 +7,3 @@ max_parcel_size: 2000000
 drop_after_build: True
 
 residential: True
-
-num_units_to_build: None
-
-remove_developed_buildings: True
-
-unplace_agents:
-- households
-- jobs
-
-
-

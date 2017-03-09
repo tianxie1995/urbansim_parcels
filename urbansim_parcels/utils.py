@@ -694,7 +694,8 @@ def run_feasibility(parcels, parcel_price_callback,
     Adds a table called feasibility to the sim object (returns nothing)
     """
 
-    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+    cfg = misc.config(cfg)
+    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
           else sqftproforma.SqFtProForma.from_defaults())
     df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
@@ -731,11 +732,11 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     return old_buildings
 
 
-def process_new_buildings(developer, buildings, new_buildings,
+def process_new_buildings(feasibility, buildings, new_buildings,
                           form_to_btype_callback,
-                          add_more_columns_callback):
-
-    cfg = developer.to_dict
+                          add_more_columns_callback,
+                          supply_fname, remove_developed_buildings,
+                          unplace_agents):
 
     if form_to_btype_callback is not None:
         new_buildings["building_type_id"] = new_buildings.apply(
@@ -746,20 +747,20 @@ def process_new_buildings(developer, buildings, new_buildings,
         new_buildings = add_more_columns_callback(new_buildings)
 
     print "Adding {:,} buildings with {:,} {}".format(
-        len(new_buildings), int(new_buildings[cfg['supply_fname']].sum()),
-        cfg['supply_fname'])
+        len(new_buildings), int(new_buildings[supply_fname].sum()),
+        supply_fname)
 
     print "{:,} feasible buildings after running developer".format(
-        len(developer.feasibility))
+        len(feasibility))
 
     old_buildings = buildings.to_frame(buildings.local_columns)
     new_buildings = new_buildings[buildings.local_columns]
 
-    if cfg['remove_developed_buildings']:
+    if remove_developed_buildings:
         old_buildings = _remove_developed_buildings(
-            old_buildings, new_buildings, cfg['unplace_agents'])
+            old_buildings, new_buildings, unplace_agents)
 
-    all_buildings, new_index = developer.merge(old_buildings, new_buildings,
+    all_buildings, new_index = merge_buildings(old_buildings, new_buildings,
                                                return_index=True)
     ret_buildings.index = new_index
 
@@ -795,16 +796,88 @@ def add_new_units(dev, new_buildings):
 
         print "Adding {:,} units to the residential_units table". \
             format(len(new_units))
-        all_units = dev.merge(old_units, new_units)
+        all_units = merge_buildings(old_units, new_units)
         all_units.index.name = "unit_id"
 
         orca.add_table("residential_units", all_units)
 
 
-def run_developer(forms, agents, buildings, feasibility,
+def compute_units_to_build(num_agents, num_units, target_vacancy):
+    """
+    Compute number of units to build to match target vacancy.
+
+    Parameters
+    ----------
+    num_agents : int
+        number of agents that need units in the region
+    num_units : int
+        number of units in buildings
+    target_vacancy : float (0-1.0)
+        target vacancy rate
+
+    Returns
+    -------
+    number_of_units : int
+        the number of units that need to be built
+    """
+    print "Number of agents: {:,}".format(num_agents)
+    print "Number of agent spaces: {:,}".format(int(num_units))
+    assert target_vacancy < 1.0
+    target_units = int(max(
+        (num_agents / (1 - target_vacancy) - num_units), 0))
+    print "Current vacancy = {:.2f}".format(1 - num_agents /
+                                            float(num_units))
+    print "Target vacancy = {:.2f}, target of new units = {:,}".format(
+        target_vacancy,
+        target_units)
+    return target_units
+
+
+def merge_buildings(old_df, new_df, return_index=False):
+    """
+    Merge two dataframes of buildings.  The old dataframe is
+    usually the buildings dataset and the new dataframe is a modified
+    (by the user) version of what is returned by the pick method.
+
+    Parameters
+    ----------
+    old_df : dataframe
+        Current set of buildings
+    new_df : dataframe
+        New buildings to add, usually comes from this module
+    return_index : bool
+        If return_index is true, this method will return the new
+        index of new_df (which changes in order to create a unique
+        index after the merge)
+
+    Returns
+    -------
+    df : dataframe
+        Combined DataFrame of buildings, makes sure indexes don't overlap
+    index : pd.Index
+        If and only if return_index is True, return the new index for the
+        new_df dataframe (which changes in order to create a unique index
+        after the merge)
+    """
+    maxind = np.max(old_df.index.values)
+    new_df = new_df.reset_index(drop=True)
+    new_df.index = new_df.index + maxind + 1
+    concat_df = pd.concat([old_df, new_df], verify_integrity=True)
+    concat_df.index.name = 'building_id'
+
+    if return_index:
+        return concat_df, new_df.index
+
+    return concat_df
+
+
+def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   parcel_size, ave_unit_size, current_units, cfg, year=None,
-                  form_to_btype_callback=None, add_more_columns_callback=None,
-                  profit_to_prob_func=None):
+                  target_vacancy=0.1, form_to_btype_callback=None,
+                  add_more_columns_callback=None,
+                  remove_developed_buildings=True,
+                  unplace_agents=['households', 'jobs'],
+                  num_units_to_build=None, profit_to_prob_func=None):
     """
     Run the developer model to pick and build buildings
 
@@ -816,6 +889,9 @@ def run_developer(forms, agents, buildings, feasibility,
         Used to compute the current demand for units/floorspace in the area
     buildings : DataFrame Wrapper
         Used to compute the current supply of units/floorspace in the area
+    supply_fname : string
+        Identifies the column in buildings which indicates the supply of
+        units/floorspace
     feasibility : DataFrame Wrapper
         The output from feasibility above (the table called 'feasibility')
     parcel_size : series
@@ -835,12 +911,25 @@ def run_developer(forms, agents, buildings, feasibility,
     year : int
         The year of the simulation - will be assigned to 'year_built' on the
         new buildings
+    target_vacancy : float
+        The target vacancy rate - used to determine how much to build
     form_to_btype_callback : function
         Will be used to convert the 'forms' in the pro forma to
         'building_type_id' in the larger model
     add_more_columns_callback : function
         Takes a dataframe and returns a dataframe - is used to make custom
         modifications to the new buildings that get added
+    remove_developed_buildings : optional, boolean (default True)
+        Remove all buildings on the parcels which are being developed on
+    unplace_agents : optional, list of strings (default ['households', 'jobs'])
+        For all tables in the list, will look for field building_id and set
+        it to -1 for buildings which are removed - only executed if
+        remove_developed_buildings is true
+    num_units_to_build: optional, int
+        If num_units_to_build is passed, build this many units rather than
+        computing it internally by using the length of agents adn the sum of
+        the relevant supply columin - this trusts the caller to know how to
+        compute this.
     profit_to_prob_func: func
         Passed directly to dev.pick
 
@@ -849,10 +938,16 @@ def run_developer(forms, agents, buildings, feasibility,
     Writes the result back to the buildings table and returns the new
     buildings with available debugging information on each new building
     """
-
     cfg = misc.config(cfg)
-    dev = developer.Developer.from_yaml(feasibility.to_frame(), forms, agents,
-                                        buildings, parcel_size,
+
+    target_units = (
+        num_units_to_build or
+        compute_units_to_build(len(agents),
+                               buildings[supply_fname].sum(),
+                               target_vacancy))
+
+    dev = developer.Developer.from_yaml(feasibility.to_frame(), forms,
+                                        target_units, parcel_size,
                                         ave_unit_size, current_units,
                                         year, str_or_buffer=cfg)
 
@@ -869,9 +964,11 @@ def run_developer(forms, agents, buildings, feasibility,
         return new_buildings
 
     all_buildings, ret_buildings = (
-        process_new_buildings(dev, buildings, new_buildings,
+        process_new_buildings(dev.feasibility, buildings, new_buildings,
                               form_to_btype_callback,
-                              add_more_columns_callback))
+                              add_more_columns_callback,
+                              supply_fname, remove_developed_buildings,
+                              unplace_agents))
 
     add_new_units(dev, ret_buildings)
 

@@ -25,4 +25,5 @@ install:
 - pip install ./developer
 
 script:
+- py.test
 - cd $TRAVIS_BUILD_DIR/sf_example; python simulate.py
