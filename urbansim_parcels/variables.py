@@ -312,6 +312,11 @@ def ave_sqft_per_unit(parcels, nodes, settings):
     return s
 
 
+@orca.column('parcels', 'ave_sqft_per_unit_placeholder')
+def ave_sqft_per_unit_placeholder(parcels):
+    return pd.Series(data=1000, index=parcels.index)
+
+
 # this just changes the column name for reverse compatibility
 @orca.column('parcels', 'ave_unit_size')
 def ave_unit_size(parcels):
