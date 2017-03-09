@@ -731,7 +731,7 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     return old_buildings
 
 
-def process_new_buildings(buildings, new_buildings,
+def process_new_buildings(feasibility, buildings, new_buildings,
                           form_to_btype_callback,
                           add_more_columns_callback,
                           supply_fname, remove_developed_buildings,
@@ -750,7 +750,7 @@ def process_new_buildings(buildings, new_buildings,
         supply_fname)
 
     print "{:,} feasible buildings after running developer".format(
-        len(developer.feasibility))
+        len(feasibility))
 
     old_buildings = buildings.to_frame(buildings.local_columns)
     new_buildings = new_buildings[buildings.local_columns]
@@ -759,7 +759,7 @@ def process_new_buildings(buildings, new_buildings,
         old_buildings = _remove_developed_buildings(
             old_buildings, new_buildings, unplace_agents)
 
-    all_buildings, new_index = developer.merge(old_buildings, new_buildings,
+    all_buildings, new_index = merge_buildings(old_buildings, new_buildings,
                                                return_index=True)
     ret_buildings.index = new_index
 
@@ -963,7 +963,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         return new_buildings
 
     all_buildings, ret_buildings = (
-        process_new_buildings(buildings, new_buildings,
+        process_new_buildings(dev.feasibility, buildings, new_buildings,
                               form_to_btype_callback,
                               add_more_columns_callback,
                               supply_fname, remove_developed_buildings,
