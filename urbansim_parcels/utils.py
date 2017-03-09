@@ -694,7 +694,8 @@ def run_feasibility(parcels, parcel_price_callback,
     Adds a table called feasibility to the sim object (returns nothing)
     """
 
-    pf = (sqftproforma.SqFtProForma.from_yaml(cfg) if cfg
+    cfg = misc.config(cfg)
+    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
           else sqftproforma.SqFtProForma.from_defaults())
     df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
