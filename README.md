@@ -8,10 +8,15 @@ This kit is preconfigured to use with San Francisco City.
 
 ### Requirements (Linux OS)
 * git
-* wget
-* Python 2.7+
+* Python 2.7
 * pip (Python package manager)
-* Python virtual environments
+
+### Optional
+A good and strongly recommended practice is the use of an isolated Python environment where to
+run every project, install development and pre-release versions of packages and avoid
+conflicts with other Python projects running on the same machine.
+
+* Python virtual environment (virtualenv)
     To install: `pip install virtualenv`
 
 ### Installation steps
@@ -21,11 +26,11 @@ This kit is preconfigured to use with San Francisco City.
     https://github.com/urbansim/urbansim_parcels
     cd urbansim_parcels
     ```
-* Create Python virtual environment
+* (only when using `virtualenv`) Create Python virtual environment
     ```
     virtualenv venv
     ```
-* Activate virtual environment
+* (`venv` only) Activate virtual environment
     ```
     source venv/bin/activate
     ```
@@ -47,13 +52,13 @@ This kit is preconfigured to use with San Francisco City.
     # Parcels models
     pip install .
     ```
-* Exit Python virtual environment
+* (`venv` only) Exit Python virtual environment
     ```
     deactivate
     ```
 
 ## Usage
-* Activate existing Python environment
+* (`venv` only) Activate existing Python environment
     ```
     source venv/bin/activate
     ```
