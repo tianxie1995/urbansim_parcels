@@ -25,11 +25,11 @@ install:
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
      pip install pandana;
   fi
-- git clone git@github.com:urbansim/developer.git
+- git clone -b python3 git@github.com:urbansim/developer.git
 - pip install ./developer
 
 script:
-- py.test
+- cd "$TRAVIS_BUILD_DIR" && py.test
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-     cd $TRAVIS_BUILD_DIR/sf_example; python simulate.py;
+     cd $TRAVIS_BUILD_DIR/sf_example && python simulate.py;
   fi
