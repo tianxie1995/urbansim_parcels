@@ -6,8 +6,6 @@ python:
 - '3.6'
 
 install:
-- pwd
-- echo "$TRAVIS_BUILD_DIR"
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
   -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
   -O miniconda.sh; fi
@@ -27,7 +25,7 @@ install:
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
      pip install pandana;
   fi
-- git clone -b python3 git@github.com:urbansim/developer.git
+- cd .. && git clone -b python3 git@github.com:urbansim/developer.git
 - pip install ./developer
 
 script:
