@@ -20,7 +20,7 @@ install:
 - source activate test-environment
 - conda list
 - pip install .
-- pip install https://github.com/UDST/urbansim/archive/master.zip
+- pip install https://github.com/pksohn/urbansim/archive/python3.zip
 - pip install https://github.com/UDST/orca/archive/master.zip
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
      pip install pandana;
