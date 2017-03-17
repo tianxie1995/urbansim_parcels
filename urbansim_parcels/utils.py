@@ -7,7 +7,7 @@ from urbansim.models import RegressionModel, SegmentedRegressionModel, \
     MNLDiscreteChoiceModel, SegmentedMNLDiscreteChoiceModel, \
     GrowthRateTransition, transition
 from urbansim.models.supplydemand import supply_and_demand
-from developer import sqftproforma, developer
+from developer import sqftproforma, develop
 from urbansim.utils import misc
 
 
@@ -946,7 +946,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                                buildings[supply_fname].sum(),
                                target_vacancy))
 
-    dev = developer.Developer.from_yaml(feasibility.to_frame(), forms,
+    dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
                                         target_units, parcel_size,
                                         ave_unit_size, current_units,
                                         year, str_or_buffer=cfg)
@@ -1011,7 +1011,7 @@ def scheduled_development_events(buildings, new_buildings,
             _remove_developed_buildings(old_buildings, new_buildings,
                                         unplace_agents)
 
-    all_buildings = developer.Developer.merge(old_buildings, new_buildings)
+    all_buildings = develop.Developer.merge(old_buildings, new_buildings)
 
     print "Res units after: {:,}".format(all_buildings.residential_units.sum())
     print "Non-res sqft after: {:,}".format(

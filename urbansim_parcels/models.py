@@ -9,9 +9,9 @@ import pandas as pd
 from urbansim.utils import misc
 from urbansim.utils import networks
 
-import utils
-import datasources
-import variables
+from urbansim_parcels import utils
+from urbansim_parcels import datasources
+from urbansim_parcels import variables
 
 
 @orca.step('rsh_estimate')
