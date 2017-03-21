@@ -41,6 +41,18 @@ def uuid_hex():
     return uuid.uuid4().hex
 
 
+def decode_index_name(df):
+    """
+    Some HDF5 stores created in Python 2.7 have DataFrame index names that are
+    read as numpy.bytes_ and Python bytes objects, thus incorrectly referenced
+    throughout the model. This function decodes a DataFrame's index name
+    if type is bytes.
+    """
+    if df.index.name and type(df.index.name) == np.bytes_:
+        df.index.name = df.index.name.decode()
+    return df
+
+
 @orca.injectable('store', cache=True)
 def hdfstore(settings):
     return pd.HDFStore(
@@ -88,7 +100,7 @@ def building_sqft_per_job(settings):
 
 @orca.table('buildings', cache=True)
 def buildings(store, households, jobs, building_sqft_per_job, settings):
-    df = store['buildings']
+    df = decode_index_name(store['buildings'])
 
     if settings.get("set_nan_price_to_zero", False):
         for col in ["residential_price", "non_residential_price"]:
@@ -132,7 +144,7 @@ def employment_controls():
 
 @orca.table('jobs', cache=True)
 def jobs(store, settings):
-    df = store['jobs']
+    df = decode_index_name(store['jobs'])
 
     if settings.get("remove_invalid_building_ids", True):
         # have to do it this way to prevent circular reference
@@ -147,7 +159,7 @@ def jobs(store, settings):
 
 @orca.table('households', cache=True)
 def households(store, settings):
-    df = store['households']
+    df = decode_index_name(store['households'])
 
     if settings.get("remove_invalid_building_ids", True):
         # have to do it this way to prevent circular reference
@@ -164,28 +176,29 @@ def households(store, settings):
 
 @orca.table('parcels', cache=True)
 def parcels(store):
-    df = store['parcels']
+    df = decode_index_name(store['parcels'])
     return df
 
 
 # these are shapes - "zones" in the bay area
 @orca.table('zones', cache=True)
 def zones(store):
-    df = store['zones']
+    df = decode_index_name(store['zones'])
     return df
 
 
-# starts with the same underlying shapefile, but is used later in the simulation
+# starts with the same underlying shapefile,
+# but is used later in the simulation
 @orca.table('zones_prices', cache=True)
 def zones_prices(store):
-    df = store['zones']
+    df = decode_index_name(store['zones'])
     return df
 
 
 # this is the mapping of parcels to zoning attributes
 @orca.table('zoning_for_parcels', cache=True)
 def zoning_for_parcels(store):
-    df = store['zoning_for_parcels']
+    df = decode_index_name(store['zoning_for_parcels'])
     df = df.reset_index().drop_duplicates(subset='parcel').set_index('parcel')
     return df
 
@@ -193,7 +206,7 @@ def zoning_for_parcels(store):
 # this is the actual zoning
 @orca.table('zoning', cache=True)
 def zoning(store):
-    df = store['zoning']
+    df = decode_index_name(store['zoning'])
     return df
 
 
