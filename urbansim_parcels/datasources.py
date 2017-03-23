@@ -1,3 +1,5 @@
+from __future__ import print_function, division, absolute_import
+
 import os
 import uuid
 import warnings
@@ -8,7 +10,7 @@ import pandas as pd
 from urbansim.utils import misc
 import yaml
 
-import utils
+from urbansim_parcels import utils
 
 warnings.filterwarnings('ignore', category=pd.io.pytables.PerformanceWarning)
 pd.options.mode.chained_assignment = None
@@ -173,7 +175,8 @@ def zones(store):
     return df
 
 
-# starts with the same underlying shapefile, but is used later in the simulation
+# starts with the same underlying shapefile,
+# but is used later in the simulation
 @orca.table('zones_prices', cache=True)
 def zones_prices(store):
     df = store['zones']
