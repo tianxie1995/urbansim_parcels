@@ -1,4 +1,9 @@
-from urbansim_parcels import models, variables, datasources
+from urbansim_parcels import models
+from urbansim_parcels import variables
+from urbansim_parcels import datasources
+from sf_example import custom_models
+from sf_example import custom_variables
+from sf_example import custom_datasources
 import orca
 
 steps = [
