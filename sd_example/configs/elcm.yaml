@@ -1,0 +1,856 @@
+name: elcm
+
+model_type: segmented_discretechoice
+
+segmentation_col: sector_id
+
+choosers_fit_filters: building_id > 0
+
+choosers_predict_filters: null
+
+alts_fit_filters: null
+
+alts_predict_filters: null
+
+interaction_predict_filters: null
+
+choice_column: null
+
+sample_size: 100
+
+estimation_sample_size: 1000
+
+prediction_sample_size: null
+
+default_config:
+    model_expression: jobs_800m + ave_parcel_size + is_office + is_retail
+
+models:
+    &id001 !!python/long '1':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.030484545466564
+                is_office: -0.08728957991454467
+                is_peripheral: -1.9747785567538856
+                is_retail: -0.3066478635518918
+                jobs1: 1.548699876422323
+                jobs_800m: 0.08873738636842718
+                nonres_rent_per_sqft: 0.15890939495242526
+                np.log1p(jobs_within_30_min): -0.28431518319813326
+                np.log1p(population_within_15_min): -0.19233280885242596
+            Std. Error:
+                ave_parcel_size: 0.05820797135916214
+                is_office: 0.3066392889097434
+                is_peripheral: 0.4234823118071057
+                is_retail: 0.18074266375336315
+                jobs1: 0.04476661492783351
+                jobs_800m: 0.03961276221913594
+                nonres_rent_per_sqft: 0.0076128220563211205
+                np.log1p(jobs_within_30_min): 0.07350371169145586
+                np.log1p(population_within_15_min): 0.06886803519775005
+            T-Score:
+                ave_parcel_size: 17.703495267136848
+                is_office: -0.2846653480866817
+                is_peripheral: -4.663190177476381
+                is_retail: -1.6965992266791845
+                jobs1: 34.59497393133077
+                jobs_800m: 2.2401211477638476
+                nonres_rent_per_sqft: 20.873914269476288
+                np.log1p(jobs_within_30_min): -3.868038452147748
+                np.log1p(population_within_15_min): -2.7927732844440083
+        fitted: true
+        log_likelihoods:
+            convergence: -877.9854059525175
+            'null': -4605.17018598815
+            ratio: 0.80934789150162
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs1
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id001
+    &id002 !!python/long '2':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.4480081477490616
+                is_office: -0.3364680026754648
+                is_peripheral: -3.0
+                is_retail: 0.4439341762517534
+                jobs2: 3.0
+                jobs_800m: 0.5108388386078113
+                nonres_rent_per_sqft: 0.162029037048815
+                np.log1p(jobs_within_30_min): -0.25608084295757694
+                np.log1p(population_within_15_min): 0.5545525130256692
+            Std. Error:
+                ave_parcel_size: 0.454717820071701
+                is_office: 1.2058714360381457
+                is_peripheral: 673.2096617874612
+                is_retail: 0.9890360011927508
+                jobs2: 0.5334950308724555
+                jobs_800m: 0.30537996061686606
+                nonres_rent_per_sqft: 0.07672000564675346
+                np.log1p(jobs_within_30_min): 0.8258505852106205
+                np.log1p(population_within_15_min): 0.8042752891872722
+            T-Score:
+                ave_parcel_size: 3.184410383390597
+                is_office: -0.2790247721439694
+                is_peripheral: -0.0044562640292989866
+                is_retail: 0.44885542661377414
+                jobs2: 5.623295113159583
+                jobs_800m: 1.672797512894819
+                nonres_rent_per_sqft: 2.1119528822098244
+                np.log1p(jobs_within_30_min): -0.31008132408390493
+                np.log1p(population_within_15_min): 0.6895058451765312
+        fitted: true
+        log_likelihoods:
+            convergence: -33.663675028042185
+            'null': -1082.2149937071983
+            ratio: 0.9688937270100786
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs2
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id002
+    &id003 !!python/long '3':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 0.887896581520762
+                is_office: -0.37452889671514844
+                is_peripheral: -1.0583711477866988
+                is_retail: -0.719664604556715
+                jobs3: 1.6549615059457803
+                jobs_800m: 0.08805726590553356
+                nonres_rent_per_sqft: 0.16156081532409403
+                np.log1p(jobs_within_30_min): -0.4088239515598773
+                np.log1p(population_within_15_min): 0.099187724729381
+            Std. Error:
+                ave_parcel_size: 0.12776902244427876
+                is_office: 0.31601692694792033
+                is_peripheral: 0.8679018718264793
+                is_retail: 0.24470774895269537
+                jobs3: 0.053776677692398064
+                jobs_800m: 0.08610708170376898
+                nonres_rent_per_sqft: 0.01929381342683744
+                np.log1p(jobs_within_30_min): 0.15552386419179334
+                np.log1p(population_within_15_min): 0.14091828333710013
+            T-Score:
+                ave_parcel_size: 6.949232016766676
+                is_office: -1.185154543246574
+                is_peripheral: -1.219459459811259
+                is_retail: -2.940914652832812
+                jobs3: 30.774707121405672
+                jobs_800m: 1.022648360194969
+                nonres_rent_per_sqft: 8.37371087559938
+                np.log1p(jobs_within_30_min): -2.6286895177431555
+                np.log1p(population_within_15_min): 0.7038669672983977
+        fitted: true
+        log_likelihoods:
+            convergence: -358.64186370973096
+            'null': -4605.17018598815
+            ratio: 0.9221219088056839
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs3
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id003
+    &id004 !!python/long '4':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.1987025378128646
+                is_office: -0.3213614588704429
+                is_peripheral: -3.0
+                is_retail: -0.5186511566861265
+                jobs4: 1.3813925438429036
+                jobs_800m: -0.0969001788120615
+                nonres_rent_per_sqft: 0.1419799476427829
+                np.log1p(jobs_within_30_min): -0.44119812106091255
+                np.log1p(population_within_15_min): 0.3859082241736835
+            Std. Error:
+                ave_parcel_size: 0.07116384799278169
+                is_office: 0.17184527290092008
+                is_peripheral: 1.308159460708503
+                is_retail: 0.12030280198340568
+                jobs4: 0.04443089396767781
+                jobs_800m: 0.04660893926394258
+                nonres_rent_per_sqft: 0.011070895745736971
+                np.log1p(jobs_within_30_min): 0.07721081773169935
+                np.log1p(population_within_15_min): 0.06849531348286646
+            T-Score:
+                ave_parcel_size: 16.8442625240621
+                is_office: -1.8700628387708316
+                is_peripheral: -2.2932984013854023
+                is_retail: -4.311214270451225
+                jobs4: 31.090811381104025
+                jobs_800m: -2.079004164057967
+                nonres_rent_per_sqft: 12.824612470716708
+                np.log1p(jobs_within_30_min): -5.714200859703835
+                np.log1p(population_within_15_min): 5.634082166369168
+        fitted: true
+        log_likelihoods:
+            convergence: -1641.2819709308715
+            'null': -4605.17018598815
+            ratio: 0.643600148388719
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs4
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id004
+    &id005 !!python/long '5':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.137851232464215
+                is_office: -1.2580826930955606
+                is_peripheral: -3.0
+                is_retail: -1.4572653015032329
+                jobs5: 1.2736003331626766
+                jobs_800m: 0.06990989656762643
+                nonres_rent_per_sqft: 0.14934608636480634
+                np.log1p(jobs_within_30_min): -0.4847079078217701
+                np.log1p(population_within_15_min): 0.5853341919430817
+            Std. Error:
+                ave_parcel_size: 0.08252701386317986
+                is_office: 0.2304904005087454
+                is_peripheral: 6.288192725050224
+                is_retail: 0.2134643839536758
+                jobs5: 0.05562421169432967
+                jobs_800m: 0.07547819877225644
+                nonres_rent_per_sqft: 0.01543432118809167
+                np.log1p(jobs_within_30_min): 0.09446282631975052
+                np.log1p(population_within_15_min): 0.08187986997066984
+            T-Score:
+                ave_parcel_size: 13.78762152173153
+                is_office: -5.458286723953286
+                is_peripheral: -0.47708461416090564
+                is_retail: -6.826737437470955
+                jobs5: 22.89651024919617
+                jobs_800m: 0.9262263501884633
+                nonres_rent_per_sqft: 9.676232893224622
+                np.log1p(jobs_within_30_min): -5.131202682641162
+                np.log1p(population_within_15_min): 7.1486946932469975
+        fitted: true
+        log_likelihoods:
+            convergence: -981.2863033260818
+            'null': -4605.17018598815
+            ratio: 0.7869163866491238
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs5
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id005
+    &id006 !!python/long '6':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.1360441128840142
+                is_office: -0.6204024004336428
+                is_peripheral: -3.0
+                is_retail: -0.5871455837122038
+                jobs6: 1.2930570873644067
+                jobs_800m: 0.027808737961997808
+                nonres_rent_per_sqft: 0.12024657210314747
+                np.log1p(jobs_within_30_min): -0.524247254885826
+                np.log1p(population_within_15_min): 0.507755927317399
+            Std. Error:
+                ave_parcel_size: 0.06660272138642816
+                is_office: 0.17481272261441164
+                is_peripheral: 0.8133062522607194
+                is_retail: 0.13476595399793165
+                jobs6: 0.04861181615821562
+                jobs_800m: 0.05213857988681626
+                nonres_rent_per_sqft: 0.011108666652277686
+                np.log1p(jobs_within_30_min): 0.07941515632587416
+                np.log1p(population_within_15_min): 0.06917209272208497
+            T-Score:
+                ave_parcel_size: 17.0570224344543
+                is_office: -3.548954510605492
+                is_peripheral: -3.6886474088463026
+                is_retail: -4.356779782237991
+                jobs6: 26.599645714859268
+                jobs_800m: 0.5333620137404148
+                nonres_rent_per_sqft: 10.824572909341239
+                np.log1p(jobs_within_30_min): -6.601350159591912
+                np.log1p(population_within_15_min): 7.340473698799703
+        fitted: true
+        log_likelihoods:
+            convergence: -1479.4400149828402
+            'null': -4605.17018598815
+            ratio: 0.6787436825930482
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs6
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id006
+    &id007 !!python/long '7':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.381141723870298
+                is_office: 0.26286155108779335
+                is_peripheral: -3.0
+                is_retail: 1.4595587845855207
+                jobs7: 0.7985067989908201
+                jobs_800m: 0.09589098415220991
+                nonres_rent_per_sqft: 0.10992736408671432
+                np.log1p(jobs_within_30_min): -0.4388980413159913
+                np.log1p(population_within_15_min): 0.6819288738022897
+            Std. Error:
+                ave_parcel_size: 0.06673000515330156
+                is_office: 0.176561130885836
+                is_peripheral: 0.757090061816307
+                is_retail: 0.10846033370536581
+                jobs7: 0.050204488799821874
+                jobs_800m: 0.05060334606980097
+                nonres_rent_per_sqft: 0.010303034557223898
+                np.log1p(jobs_within_30_min): 0.08066938190363462
+                np.log1p(population_within_15_min): 0.07386818550141869
+            T-Score:
+                ave_parcel_size: 20.69746166956446
+                is_office: 1.4887849311395667
+                is_peripheral: -3.9625404576079233
+                is_retail: 13.45707444115408
+                jobs7: 15.905087733781551
+                jobs_800m: 1.8949534289677272
+                nonres_rent_per_sqft: 10.669416226468885
+                np.log1p(jobs_within_30_min): -5.440701675888462
+                np.log1p(population_within_15_min): 9.231699265026522
+        fitted: true
+        log_likelihoods:
+            convergence: -1722.6780350468464
+            'null': -4605.17018598815
+            ratio: 0.6259252176416137
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs7
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id007
+    &id008 !!python/long '8':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.0671147224962414
+                is_office: -0.21052687071628348
+                is_peripheral: -1.1810851663056925
+                is_retail: -0.5620196129471129
+                jobs8: 1.467241910568293
+                jobs_800m: 0.03326091431321395
+                nonres_rent_per_sqft: 0.11737290642746914
+                np.log1p(jobs_within_30_min): -0.5017011172135926
+                np.log1p(population_within_15_min): 0.23795755106415664
+            Std. Error:
+                ave_parcel_size: 0.054530473215527765
+                is_office: 0.18955139055700818
+                is_peripheral: 0.39923375762931956
+                is_retail: 0.13557534755432316
+                jobs8: 0.04398854621242279
+                jobs_800m: 0.04624189699430349
+                nonres_rent_per_sqft: 0.010783763881029165
+                np.log1p(jobs_within_30_min): 0.08202154818464212
+                np.log1p(population_within_15_min): 0.0737402348509991
+            T-Score:
+                ave_parcel_size: 19.569144729013214
+                is_office: -1.110658540133299
+                is_peripheral: -2.9583800060372303
+                is_retail: -4.145441063478885
+                jobs8: 33.35508983367879
+                jobs_800m: 0.7192809221756482
+                nonres_rent_per_sqft: 10.884224443559264
+                np.log1p(jobs_within_30_min): -6.116698944577251
+                np.log1p(population_within_15_min): 3.2269703445476963
+        fitted: true
+        log_likelihoods:
+            convergence: -1202.8311923970255
+            'null': -4605.17018598815
+            ratio: 0.7388085252404348
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs8
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id008
+    &id009 !!python/long '9':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.2518963338342866
+                is_office: 0.6624478315930269
+                is_peripheral: -3.0
+                is_retail: -0.18718201336296109
+                jobs9: 1.2293776118085689
+                jobs_800m: 0.05030629821547323
+                nonres_rent_per_sqft: 0.11075559083572575
+                np.log1p(jobs_within_30_min): -0.19709707082171007
+                np.log1p(population_within_15_min): 0.1686478015029802
+            Std. Error:
+                ave_parcel_size: 0.08675230169177746
+                is_office: 0.14853232901438074
+                is_peripheral: 1.4150375240737396
+                is_retail: 0.14015357382755111
+                jobs9: 0.04964304049656933
+                jobs_800m: 0.06102677371836661
+                nonres_rent_per_sqft: 0.007941624515519951
+                np.log1p(jobs_within_30_min): 0.08212715256512972
+                np.log1p(population_within_15_min): 0.07926345068557657
+            T-Score:
+                ave_parcel_size: 14.430698775948946
+                is_office: 4.459957209240888
+                is_peripheral: -2.1200851206852276
+                is_retail: -1.3355493424183038
+                jobs9: 24.764349635142256
+                jobs_800m: 0.8243316031686769
+                nonres_rent_per_sqft: 13.946213475502551
+                np.log1p(jobs_within_30_min): -2.399901429255144
+                np.log1p(population_within_15_min): 2.127686847396725
+        fitted: true
+        log_likelihoods:
+            convergence: -943.0549909770677
+            'null': -4605.17018598815
+            ratio: 0.7952182106436718
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs9
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id009
+    &id010 !!python/long '10':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.1489398433083913
+                is_office: 0.8189424674080995
+                is_peripheral: -0.9560494892985404
+                is_retail: 0.5509646840908389
+                jobs10: 1.1290645459792807
+                jobs_800m: -0.019589730903208428
+                nonres_rent_per_sqft: 0.11653061387020755
+                np.log1p(jobs_within_30_min): -0.2911917793216469
+                np.log1p(population_within_15_min): 0.3310129134384108
+            Std. Error:
+                ave_parcel_size: 0.06416079436011218
+                is_office: 0.1312435325902627
+                is_peripheral: 0.569622664936753
+                is_retail: 0.12292668392785851
+                jobs10: 0.05167945878571023
+                jobs_800m: 0.05770587162180124
+                nonres_rent_per_sqft: 0.00809049442250294
+                np.log1p(jobs_within_30_min): 0.07813015529678728
+                np.log1p(population_within_15_min): 0.07487923976326721
+            T-Score:
+                ave_parcel_size: 17.907194802791754
+                is_office: 6.23986912913116
+                is_peripheral: -1.678390886016963
+                is_retail: 4.482059277009224
+                jobs10: 21.847452982450267
+                jobs_800m: -0.3394755222067808
+                nonres_rent_per_sqft: 14.403398332009072
+                np.log1p(jobs_within_30_min): -3.727008838207451
+                np.log1p(population_within_15_min): 4.420623319426283
+        fitted: true
+        log_likelihoods:
+            convergence: -1166.1556694716764
+            'null': -4605.17018598815
+            ratio: 0.7467725138541325
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs10
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id010
+    &id011 !!python/long '11':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.2217960477397307
+                is_office: 0.8658618429153256
+                is_peripheral: -3.0
+                is_retail: 0.4806251894881464
+                jobs11: 1.1116189133011825
+                jobs_800m: 0.028156944273455456
+                nonres_rent_per_sqft: 0.09884310349340343
+                np.log1p(jobs_within_30_min): -0.22525028974383465
+                np.log1p(population_within_15_min): 0.29627593081104925
+            Std. Error:
+                ave_parcel_size: 0.06147194669322583
+                is_office: 0.11553907066524255
+                is_peripheral: 0.8035934913347894
+                is_retail: 0.09841604142682817
+                jobs11: 0.04671656610539953
+                jobs_800m: 0.04154634288349568
+                nonres_rent_per_sqft: 0.0073333991806467805
+                np.log1p(jobs_within_30_min): 0.06983755309139396
+                np.log1p(population_within_15_min): 0.06540612061226886
+            T-Score:
+                ave_parcel_size: 19.875668714984293
+                is_office: 7.494104270788475
+                is_peripheral: -3.7332308341832423
+                is_retail: 4.883606193869206
+                jobs11: 23.794961958316986
+                jobs_800m: 0.6777237734838227
+                nonres_rent_per_sqft: 13.478483996105856
+                np.log1p(jobs_within_30_min): -3.225346246725705
+                np.log1p(population_within_15_min): 4.529789078416522
+        fitted: true
+        log_likelihoods:
+            convergence: -1726.51763245556
+            'null': -4605.17018598815
+            ratio: 0.6250914596579465
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs11
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id011
+    &id012 !!python/long '12':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.1450840340758834
+                is_office: 0.5921026810324528
+                is_peripheral: -3.0
+                is_retail: -0.05751042715252792
+                jobs12: 0.8669177063905674
+                jobs_800m: 0.19141097074267616
+                nonres_rent_per_sqft: 0.11244549552147143
+                np.log1p(jobs_within_30_min): -0.04365233784772824
+                np.log1p(population_within_15_min): 0.13104472091418995
+            Std. Error:
+                ave_parcel_size: 0.06877447741652644
+                is_office: 0.13684587081189878
+                is_peripheral: 2.289885527646665
+                is_retail: 0.13106925852641022
+                jobs12: 0.05595469384420531
+                jobs_800m: 0.06612970131253769
+                nonres_rent_per_sqft: 0.007886227845650691
+                np.log1p(jobs_within_30_min): 0.08249863375729354
+                np.log1p(population_within_15_min): 0.07843160708023425
+            T-Score:
+                ave_parcel_size: 16.64983984016025
+                is_office: 4.326785145357629
+                is_peripheral: -1.3101091577635
+                is_retail: -0.4387789158122053
+                jobs12: 15.493207930050104
+                jobs_800m: 2.8944780778313617
+                nonres_rent_per_sqft: 14.258463960496131
+                np.log1p(jobs_within_30_min): -0.5291280092728691
+                np.log1p(population_within_15_min): 1.6708151954623771
+        fitted: true
+        log_likelihoods:
+            convergence: -1168.071269788659
+            'null': -4605.17018598815
+            ratio: 0.7463565465305336
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs12
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id012
+    &id013 !!python/long '13':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 0.944682827621112
+                is_office: -0.005889465769687621
+                is_peripheral: -3.0
+                is_retail: -0.5348494450941075
+                jobs13: 1.3383384106286118
+                jobs_800m: 0.04850625670335639
+                nonres_rent_per_sqft: 0.12233558110644678
+                np.log1p(jobs_within_30_min): 0.014518540245826494
+                np.log1p(population_within_15_min): 0.17411623167017615
+            Std. Error:
+                ave_parcel_size: 0.1059550753261059
+                is_office: 0.20808870142905103
+                is_peripheral: 9.02635954494306
+                is_retail: 0.20629716446175825
+                jobs13: 0.0600349723814382
+                jobs_800m: 0.07343746838597655
+                nonres_rent_per_sqft: 0.01586443229048775
+                np.log1p(jobs_within_30_min): 0.12094126647474385
+                np.log1p(population_within_15_min): 0.11038879222718762
+            T-Score:
+                ave_parcel_size: 8.915880855292592
+                is_office: -0.02830266962714295
+                is_peripheral: -0.33235990490548584
+                is_retail: -2.592616561112519
+                jobs13: 22.292646394927026
+                jobs_800m: 0.6605110139202325
+                nonres_rent_per_sqft: 7.711311622528006
+                np.log1p(jobs_within_30_min): 0.12004620646881022
+                np.log1p(population_within_15_min): 1.5772999066049491
+        fitted: true
+        log_likelihoods:
+            convergence: -567.3886724852276
+            'null': -4605.17018598815
+            ratio: 0.8767931152226287
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs13
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id013
+    &id014 !!python/long '14':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.1552611499623264
+                is_office: 0.509152392503129
+                is_peripheral: -3.0
+                is_retail: 0.04456028123413585
+                jobs14: 1.179046385615073
+                jobs_800m: -0.010443633977204114
+                nonres_rent_per_sqft: 0.1099042313958365
+                np.log1p(jobs_within_30_min): -0.41540791289623286
+                np.log1p(population_within_15_min): 0.33506606889651686
+            Std. Error:
+                ave_parcel_size: 0.06780297619405494
+                is_office: 0.13233199920877659
+                is_peripheral: 0.8419027687144776
+                is_retail: 0.11669738449099577
+                jobs14: 0.04527014453267004
+                jobs_800m: 0.05022546861300276
+                nonres_rent_per_sqft: 0.009856877548978434
+                np.log1p(jobs_within_30_min): 0.08029127762001195
+                np.log1p(population_within_15_min): 0.07278924454582536
+            T-Score:
+                ave_parcel_size: 17.038502065984847
+                is_office: 3.8475379768112865
+                is_peripheral: -3.56335685245551
+                is_retail: 0.3818447296697902
+                jobs14: 26.044679065784567
+                jobs_800m: -0.2079350231189358
+                nonres_rent_per_sqft: 11.150004740317279
+                np.log1p(jobs_within_30_min): -5.173761399864632
+                np.log1p(population_within_15_min): 4.603235972391112
+        fitted: true
+        log_likelihoods:
+            convergence: -1568.5340471418194
+            'null': -4605.17018598815
+            ratio: 0.6593971593244707
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs14
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id014
+    &id015 !!python/long '15':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.090602587999294
+                is_office: -0.4806518820817202
+                is_peripheral: 2.1552044601133353
+                is_retail: -1.3358072248744655
+                jobs15: 1.0703651976897488
+                jobs_800m: 0.09691809377218388
+                nonres_rent_per_sqft: 0.1626860179835363
+                np.log1p(jobs_within_30_min): -0.21004806382259783
+                np.log1p(population_within_15_min): 0.36470418390030795
+            Std. Error:
+                ave_parcel_size: 0.061696542060000206
+                is_office: 0.16005595340556675
+                is_peripheral: 0.4566787485376479
+                is_retail: 0.13700035855128845
+                jobs15: 0.03653643284357566
+                jobs_800m: 0.038307610918509635
+                nonres_rent_per_sqft: 0.006232698276407331
+                np.log1p(jobs_within_30_min): 0.07553233233806086
+                np.log1p(population_within_15_min): 0.07296790617738554
+            T-Score:
+                ave_parcel_size: 17.676883526773306
+                is_office: -3.0030240791093443
+                is_peripheral: 4.719300968163321
+                is_retail: -9.750392181450993
+                jobs15: 29.29583197879032
+                jobs_800m: 2.529995774948069
+                nonres_rent_per_sqft: 26.102020468302246
+                np.log1p(jobs_within_30_min): -2.780902658777747
+                np.log1p(population_within_15_min): 4.998145116206422
+        fitted: true
+        log_likelihoods:
+            convergence: -1465.43576723175
+            'null': -4605.17018598815
+            ratio: 0.6817846663538004
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs15
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id015
+    &id016 !!python/long '16':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 0.9168684229674018
+                is_office: 0.5530046151859876
+                is_peripheral: 1.3334826398568047
+                is_retail: -0.33581081874787605
+                jobs16: 0.9380429965885744
+                jobs_800m: 0.17797430175174564
+                nonres_rent_per_sqft: 0.14035044568978133
+                np.log1p(jobs_within_30_min): -0.38606484398112884
+                np.log1p(population_within_15_min): 0.3932584121868751
+            Std. Error:
+                ave_parcel_size: 0.06260431508853509
+                is_office: 0.1151142028005116
+                is_peripheral: 0.5553651918371806
+                is_retail: 0.11267336680228472
+                jobs16: 0.039325608143275334
+                jobs_800m: 0.045759261999133695
+                nonres_rent_per_sqft: 0.009200929411479347
+                np.log1p(jobs_within_30_min): 0.07907123154832923
+                np.log1p(population_within_15_min): 0.07300771090849181
+            T-Score:
+                ave_parcel_size: 14.64545090335651
+                is_office: 4.803965121005294
+                is_peripheral: 2.401091497012202
+                is_retail: -2.980392157244623
+                jobs16: 23.85323561102969
+                jobs_800m: 3.8893612784907896
+                nonres_rent_per_sqft: 15.253942228344458
+                np.log1p(jobs_within_30_min): -4.882494384132131
+                np.log1p(population_within_15_min): 5.386532563386173
+        fitted: true
+        log_likelihoods:
+            convergence: -1604.153271785218
+            'null': -4605.17018598815
+            ratio: 0.6516625429683206
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs16
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id016
+    &id017 !!python/long '17':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 0.9142297498782266
+                is_office: -0.4027937673207142
+                is_peripheral: 0.46144959554996723
+                is_retail: -0.22408837954107763
+                jobs17: 1.572767285619532
+                jobs_800m: -0.15232340670083358
+                nonres_rent_per_sqft: 0.16039348271390952
+                np.log1p(jobs_within_30_min): -0.14657299823331854
+                np.log1p(population_within_15_min): 0.049347106702804976
+            Std. Error:
+                ave_parcel_size: 0.05624291489651806
+                is_office: 0.1801401729526145
+                is_peripheral: 0.621899517015419
+                is_retail: 0.1328335688906579
+                jobs17: 0.04594809163653381
+                jobs_800m: 0.03957219376131796
+                nonres_rent_per_sqft: 0.01066684414277317
+                np.log1p(jobs_within_30_min): 0.08018081551351904
+                np.log1p(population_within_15_min): 0.07428788880340227
+            T-Score:
+                ave_parcel_size: 16.2550207712443
+                is_office: -2.236001890742429
+                is_peripheral: 0.7420002475070684
+                is_retail: -1.686986063933404
+                jobs17: 34.229218877264714
+                jobs_800m: -3.8492535344282723
+                nonres_rent_per_sqft: 15.036638819043471
+                np.log1p(jobs_within_30_min): -1.8280307738776407
+                np.log1p(population_within_15_min): 0.6642685301422235
+        fitted: true
+        log_likelihoods:
+            convergence: -960.130778152303
+            'null': -4605.17018598815
+            ratio: 0.7915102505714924
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs17
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id017
+    &id018 !!python/long '18':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.3854403183174144
+                is_office: 0.07706180709163309
+                is_peripheral: -2.6067829028074714
+                is_retail: 0.7246116823240719
+                jobs18: 0.9038512278152745
+                jobs_800m: 0.12270752559787666
+                nonres_rent_per_sqft: 0.12555048520383122
+                np.log1p(jobs_within_30_min): -0.3391152248328008
+                np.log1p(population_within_15_min): 0.3458085939958499
+            Std. Error:
+                ave_parcel_size: 0.06300813073381059
+                is_office: 0.14222955330892847
+                is_peripheral: 0.879438155551671
+                is_retail: 0.0928902524412234
+                jobs18: 0.05238662538557179
+                jobs_800m: 0.05373320954571337
+                nonres_rent_per_sqft: 0.009200483617333938
+                np.log1p(jobs_within_30_min): 0.0773001740638785
+                np.log1p(population_within_15_min): 0.0699913313705951
+            T-Score:
+                ave_parcel_size: 21.988278372682746
+                is_office: 0.5418129024440628
+                is_peripheral: -2.9641457859788196
+                is_retail: 7.800728960044244
+                jobs18: 17.253473022223172
+                jobs_800m: 2.283644074778068
+                nonres_rent_per_sqft: 13.64607453539627
+                np.log1p(jobs_within_30_min): -4.3869917363001845
+                np.log1p(population_within_15_min): 4.940734619903683
+        fitted: true
+        log_likelihoods:
+            convergence: -1645.6451705356612
+            'null': -4605.17018598815
+            ratio: 0.6426526916328177
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs18
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id018
+    &id019 !!python/long '19':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.1139272753575356
+                is_office: 0.168043145932528
+                is_peripheral: 0.6661503041782209
+                is_retail: 0.24834249700463887
+                jobs19: 0.8647833663887373
+                jobs_800m: 0.06618766135559864
+                nonres_rent_per_sqft: 0.13481035000935654
+                np.log1p(jobs_within_30_min): -0.15637460842856754
+                np.log1p(population_within_15_min): 0.37770955210558815
+            Std. Error:
+                ave_parcel_size: 0.05833826215127039
+                is_office: 0.12672332741239775
+                is_peripheral: 0.497082517938954
+                is_retail: 0.08621241928580638
+                jobs19: 0.04643167738868366
+                jobs_800m: 0.036466901499062405
+                nonres_rent_per_sqft: 0.008211741030212435
+                np.log1p(jobs_within_30_min): 0.06681534819910816
+                np.log1p(population_within_15_min): 0.06131008431223633
+            T-Score:
+                ave_parcel_size: 19.094282796239902
+                is_office: 1.3260632384254125
+                is_peripheral: 1.3401201614176055
+                is_retail: 2.88058842405696
+                jobs19: 18.62485731776519
+                jobs_800m: 1.815006447896331
+                nonres_rent_per_sqft: 16.416780499210294
+                np.log1p(jobs_within_30_min): -2.3403995136353237
+                np.log1p(population_within_15_min): 6.1606431689444685
+        fitted: true
+        log_likelihoods:
+            convergence: -2374.9113246873185
+            'null': -4605.17018598815
+            ratio: 0.4842945583393843
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs19
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id019
+    &id020 !!python/long '20':
+        fit_parameters:
+            Coefficient:
+                ave_parcel_size: 1.0087604715930227
+                is_office: -0.7117720693947774
+                is_peripheral: -0.7070059412466954
+                is_retail: -1.4359121815999685
+                jobs20: 1.1399121993393673
+                jobs_800m: 0.15371370546589133
+                nonres_rent_per_sqft: 0.176280063441547
+                np.log1p(jobs_within_30_min): -0.31358607527560234
+                np.log1p(population_within_15_min): 0.13130720145413854
+            Std. Error:
+                ave_parcel_size: 0.07338215320837935
+                is_office: 0.15959823358699204
+                is_peripheral: 0.519344656583182
+                is_retail: 0.15382429097618763
+                jobs20: 0.03506450075876696
+                jobs_800m: 0.055554434071333515
+                nonres_rent_per_sqft: 0.01192004446883756
+                np.log1p(jobs_within_30_min): 0.1052649861662632
+                np.log1p(population_within_15_min): 0.09214318842344811
+            T-Score:
+                ave_parcel_size: 13.746673100862822
+                is_office: -4.459774105249182
+                is_peripheral: -1.3613424770713054
+                is_retail: -9.334755729979285
+                jobs20: 32.509009815414586
+                jobs_800m: 2.7669025530620734
+                nonres_rent_per_sqft: 14.788540756067984
+                np.log1p(jobs_within_30_min): -2.9790159738424475
+                np.log1p(population_within_15_min): 1.4250342722102307
+        fitted: true
+        log_likelihoods:
+            convergence: -826.2445572336349
+            'null': -4605.17018598815
+            ratio: 0.8205832740454206
+        model_expression: jobs_800m + ave_parcel_size + is_office + is_retail + jobs20
+            + np.log1p(jobs_within_30_min) + np.log1p(population_within_15_min) +
+            nonres_rent_per_sqft + is_peripheral
+        name: *id020
+
+fitted: true
+
+choice_mode: aggregate
+
+remove_alts: true
+
+probability_mode: single_chooser

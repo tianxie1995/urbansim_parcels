@@ -1,0 +1,66 @@
+name: nrh
+
+model_type: regression
+
+fit_filters:
+- nonres_rent_per_sqft > 0
+
+predict_filters:
+- (development_type_id not in [2,5,4]) & (non_residential_sqft > 0)
+
+model_expression: np.log1p(nonres_rent_per_sqft) ~ I(year_built < 1940) + I(year_built
+    > 2005) + np.log1p(stories) + ave_income + jobs_400m + year_built + distance_to_coast
+    + distance_to_freeway + nonres_occupancy_3000m + np.log1p(jobs_within_30_min)
+    + np.log1p(population_within_15_min) + is_peripheral
+
+ytransform: np.exp
+
+fitted: true
+
+fit_parameters:
+    Coefficient:
+        I(year_built < 1940)[T.True]: 0.19370867870212322
+        I(year_built > 2005)[T.True]: 0.14238187839157038
+        Intercept: 2.5894753686500422
+        ave_income: 0.018709901230216243
+        distance_to_coast: -6.860568798210225e-06
+        distance_to_freeway: -1.6539966907090285e-05
+        is_peripheral: -0.925184900336639
+        jobs_400m: 0.012787805649705632
+        nonres_occupancy_3000m: -0.0216490632530405
+        np.log1p(jobs_within_30_min): 0.04508580122616503
+        np.log1p(population_within_15_min): -0.17690131983286728
+        np.log1p(stories): 0.31680476950100067
+        year_built: 0.0007898695881783438
+    Std. Error:
+        I(year_built < 1940)[T.True]: 0.06482758733421307
+        I(year_built > 2005)[T.True]: 0.03082733312772608
+        Intercept: 1.1125761900066116
+        ave_income: 0.0018116682593704878
+        distance_to_coast: 3.8007927768461964e-07
+        distance_to_freeway: 2.1596998328276707e-06
+        is_peripheral: 0.3936741305332135
+        jobs_400m: 0.005707253354164223
+        nonres_occupancy_3000m: 0.0028908531979514006
+        np.log1p(jobs_within_30_min): 0.011053905352587871
+        np.log1p(population_within_15_min): 0.014400226990095282
+        np.log1p(stories): 0.02065451554661601
+        year_built: 0.0005422527719769429
+    T-Score:
+        I(year_built < 1940)[T.True]: 2.988059353550746
+        I(year_built > 2005)[T.True]: 4.618689453338155
+        Intercept: 2.327458911946205
+        ave_income: 10.327443301743054
+        distance_to_coast: -18.050362650665093
+        distance_to_freeway: -7.6584563538326025
+        is_peripheral: -2.350128770421157
+        jobs_400m: 2.240623441112033
+        nonres_occupancy_3000m: -7.488814467777915
+        np.log1p(jobs_within_30_min): 4.078721482413437
+        np.log1p(population_within_15_min): -12.284620232343766
+        np.log1p(stories): 15.33828129669714
+        year_built: 1.456644629586015
+
+fit_rsquared_adj: 0.2215670883221773
+
+fit_rsquared: 0.2237816912003504
