@@ -4,7 +4,8 @@ import pandas as pd
 import orca
 from urbansim.utils import misc
 
-import datasources
+from urbansim_parcels import datasources
+from sd_example import custom_datasources
 
 #####################
 # COSTAR VARIABLES

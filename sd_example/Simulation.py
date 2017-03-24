@@ -6,7 +6,8 @@
 # In[ ]:
 
 import orca
-import models
+from urbansim_parcels import models
+from sd_example import custom_models
 
 
 # ### Run all models
@@ -32,7 +33,7 @@ orca.run(["scheduled_development_events",
           "residential_developer", 
           "non_residential_developer",
           "model_integration_indicators",
-          "buildings_to_uc", #export buildings to urban canvas
+          # "buildings_to_uc", #export buildings to urban canvas
          ], iter_vars=range(first_year, 
                             last_year + 1))
 

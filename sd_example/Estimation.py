@@ -1,5 +1,6 @@
 
-import models
+from urbansim_parcels import models
+from sd_example import custom_models
 import orca
 
 

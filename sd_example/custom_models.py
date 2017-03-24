@@ -9,25 +9,12 @@ from urbansim.utils import misc
 from urbansim.utils import networks
 from urbansim.models import transition
 
-import utils
-import variables
-import datasources
+from urbansim_parcels import utils
+from urbansim_parcels import variables
+from urbansim_parcels import datasources
+from sd_example import custom_variables
+from sd_example import custom_datasources
 
-@orca.step('neighborhood_vars')
-def neighborhood_vars(net):
-    nodes = networks.from_yaml(net, "neighborhood_vars.yaml")
-    nodes = nodes.fillna(0)
-    print nodes.describe()
-    orca.add_table("nodes", nodes)
-    
-@orca.step('price_vars')
-def price_vars(net):
-    nodes2 = networks.from_yaml(net, "price_vars.yaml")
-    nodes2 = nodes2.fillna(0)
-    print nodes2.describe()
-    nodes = orca.get_table('nodes')
-    nodes = nodes.to_frame().join(nodes2)
-    orca.add_table("nodes", nodes)
 
 @orca.step('build_networks')
 def build_networks(parcels):
@@ -42,6 +29,7 @@ def build_networks(parcels):
     p['node_id'] = net.get_node_ids(p['x'], p['y'])
     orca.add_table("parcels", p)
 
+
 @orca.step('households_transition')
 def households_transition(households, annual_household_control_totals, year):
     ct = annual_household_control_totals.to_frame()
@@ -52,137 +40,105 @@ def households_transition(households, annual_household_control_totals, year):
         model.transition(hh, year,)
     new.loc[added_hh_idx, "building_id"] = -1
     orca.add_table("households", new)
-    
+
+
 @orca.step('households_transition_basic')
 def households_transition_basic(households):
     return utils.simple_transition(households, .01, "building_id")
-    
+
+
 @orca.step('jobs_transition')
 def jobs_transition(jobs):
     return utils.simple_transition(jobs, .01, "building_id")
-    
-@orca.step('households_relocation')
-def households_relocation(households, settings):
-    rate = settings['rates']['households_relocation']
-    return utils.simple_relocation(households, rate, "building_id")
 
-@orca.step('jobs_relocation')
-def jobs_relocation(jobs, settings):
-    rate = settings['rates']['jobs_relocation']
-    return utils.simple_relocation(jobs, rate, "building_id")
-    
+
 @orca.step('nrh_estimate')
 def nrh_estimate(costar, aggregations):
     return utils.hedonic_estimate("nrh.yaml", costar, aggregations)
+
 
 @orca.step('nrh_simulate')
 def nrh_simulate(buildings, aggregations):
     return utils.hedonic_simulate("nrh.yaml", buildings, aggregations,
                                   "nonres_rent_per_sqft")
-    
+
+
 @orca.step('nrh_estimate2')
 def nrh_estimate2(costar, aggregations):
     return utils.hedonic_estimate("nrh2.yaml", costar, aggregations)
+
 
 @orca.step('nrh_simulate2')
 def nrh_simulate2(buildings, aggregations):
     return utils.hedonic_simulate("nrh2.yaml", buildings, aggregations,
                                   "nonres_rent_per_sqft")
-                                  
+
+
 @orca.step('rsh_estimate')
 def rsh_estimate(assessor_transactions, aggregations):
     return utils.hedonic_estimate("rsh.yaml", assessor_transactions, aggregations)
-    
+
+
 @orca.step('rsh_simulate')
 def rsh_simulate(buildings, aggregations):
     return utils.hedonic_simulate("rsh.yaml", buildings, aggregations,
                                   "res_price_per_sqft")
-                                  
-@orca.step('elcm_estimate')
-def elcm_estimate(jobs, buildings, aggregations):
-    return utils.lcm_estimate("elcm.yaml", jobs, "building_id",
-                              buildings, aggregations)
 
-@orca.step('elcm_simulate')
-def elcm_simulate(jobs, buildings, aggregations):
-    return utils.lcm_simulate("elcm.yaml", jobs, buildings, aggregations,
-                              "building_id", "job_spaces",
-                              "vacant_job_spaces")
-
-@orca.step('hlcm_estimate')
-def hlcm_estimate(households, buildings, aggregations):
-    return utils.lcm_estimate("hlcm.yaml", households, "building_id",
-                              buildings, aggregations)
-
-@orca.step('hlcm_simulate')
-def hlcm_simulate(households, buildings, aggregations, settings):
-    return utils.lcm_simulate("hlcm.yaml", households, buildings,
-                              aggregations,
-                              "building_id", "residential_units",
-                              "vacant_residential_units",
-                              settings.get("enable_supply_correction", None))
-                              
-@orca.step('feasibility')
-def feasibility(parcels, settings,
-                parcel_sales_price_sqft_func,
-                parcel_is_allowed_func):
-    kwargs = settings['feasibility']
-    utils.run_feasibility(parcels,
-                          parcel_sales_price_sqft_func,
-                          parcel_is_allowed_func,
-                          **kwargs)
 
 @orca.step('residential_developer')
 def residential_developer(feasibility, households, buildings, parcels, year,
-                          settings, summary, form_to_btype_func,
-                          add_extra_columns_func):
-    kwargs = settings['residential_developer']
+                          summary, form_to_btype_func, add_extra_columns_func):
     new_buildings = utils.run_developer(
         "residential",
         households,
         buildings,
-        "residential_units",
+        'residential_units',
+        feasibility,
         parcels.parcel_size,
         parcels.ave_sqft_per_unit,
         parcels.total_residential_units,
-        feasibility,
+        'res_developer.yaml',
         year=year,
+        target_vacancy=.10,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        **kwargs)
+        num_units_to_build=None,
+        profit_to_prob_func=None)
 
     summary.add_parcel_output(new_buildings)
 
 
 @orca.step('non_residential_developer')
 def non_residential_developer(feasibility, jobs, buildings, parcels, year,
-                              settings, summary, form_to_btype_func,
+                              summary, form_to_btype_func,
                               add_extra_columns_func):
-
-    kwargs = settings['non_residential_developer']
     new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
         jobs,
         buildings,
-        "job_spaces",
+        'job_spaces',
+        feasibility,
         parcels.parcel_size,
         parcels.ave_sqft_per_unit,
         parcels.total_job_spaces,
-        feasibility,
+        'nonres_developer.yaml',
         year=year,
+        target_vacancy=.21,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        residential=False,
-        **kwargs)
+        num_units_to_build=None,
+        profit_to_prob_func=None)
 
     summary.add_parcel_output(new_buildings)
+
 
 def get_year():
     year = orca.get_injectable('year')
     if year is None:
         year = 2012
     return year
-    
+
+
 @orca.step('scheduled_development_events')
 def scheduled_development_events(buildings, scheduled_development_events):
     year = get_year()
@@ -200,7 +156,8 @@ def scheduled_development_events(buildings, scheduled_development_events):
         b = buildings.to_frame(buildings.local_columns)
         all_buildings = merge(b,sched_dev[b.columns])
         orca.add_table("buildings", all_buildings)
-        
+
+
 @orca.step('model_integration_indicators')
 def model_integration_indicators():
     year = get_year()
@@ -224,7 +181,8 @@ def model_integration_indicators():
     luz_nonres_indicators = b[b.non_residential_sqft > 0].groupby(['luz_id', 'development_type_id']).non_residential_sqft.sum().reset_index()
     luz_nonres_indicators.columns = ['luz_id', 'development_type_id', 'non_residential_sqft']
     luz_nonres_indicators.to_csv('./data/luz_nrsf_%s.csv'%year, index = False)
-    
+
+
 @orca.step('buildings_to_uc')
 def buildings_to_uc(buildings, settings):
     if settings['urbancanvas']:
@@ -250,7 +208,8 @@ def buildings_to_uc(buildings, settings):
         urbancanvas.buildings_to_uc(new_buildings, year)
     else:
         print 'Urban Canvas setting not on.'
-    
+
+
 @orca.injectable("add_extra_columns_func", autocall=False)
 def add_extra_columns(df):
     for col in ['improvement_value', 'res_price_per_sqft', 'nonres_rent_per_sqft']:
@@ -266,7 +225,8 @@ def add_extra_columns(df):
     df.development_type_id[(df.form == 'industrial')] = 2
     df.development_type_id[(df.form == 'office')] = 4
     return df
-    
+
+
 @orca.step('luz_indicators')
 def luz_indicators():
     bsim = orca.get_table('buildings').to_frame(columns = ['luz_id', 'note', 'res_price_per_sqft', 'nonres_rent_per_sqft', 'residential_units', 'non_residential_sqft'])
@@ -300,6 +260,7 @@ def msa_indicators():
     proportion_nrsf_by_msa = new_nrsf_by_msa / new_nrsf_by_msa.sum()
     print proportion_du_by_msa
     print proportion_nrsf_by_msa 
+
 
 # this if the function for mapping a specific building that we build to a
 # specific building type
