@@ -366,7 +366,7 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
     vacant_units = buildings[vacant_fname]
 
     print("There are {:d} total available units\n".format(
-        available_units.sum()),
+        int(available_units.sum())),
         "    and {:d} total choosers\n".format(
             len(choosers)),
         "    but there are {:d} overfull buildings".format(
