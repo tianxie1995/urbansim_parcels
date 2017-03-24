@@ -1,3 +1,7 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
+
 import os
 import yaml
 import numpy as np
@@ -5,10 +9,9 @@ import pandas as pd
 
 import orca
 from urbansim.utils import misc
-
 from urbansim_parcels import utils
 
-    
+
 @orca.injectable('conn_string', cache=True)
 def conn_string():
     return ""
@@ -29,9 +32,11 @@ def travel_data(store):
 
 @orca.table('zones', cache=True)
 def zones(travel_data):
-    df = pd.DataFrame(index = np.unique(travel_data.to_frame().reset_index().from_zone_id))
+    df = pd.DataFrame(index=np.unique(
+        travel_data.to_frame().reset_index().from_zone_id))
     return df
-    
+
+
 @orca.table('fee_schedule', cache=True)
 def fee_schedule(store):
     df = store['fee_schedule']
@@ -54,14 +59,16 @@ def zoning(store):
 def scheduled_development_events(store, settings):
     if settings['urbancanvas']:
         import urbancanvas
-        print 'Loading development projects from Urban Canvas for scheduled_development_events'
+        print('Loading development projects from Urban Canvas '
+              'for scheduled_development_events')
         df = urbancanvas.get_development_projects()
-        ##Add any additional needed columns here
+        # Add any additional needed columns here
         df['note'] = 'Scheduled development event'
-        for col in ['improvement_value', 'res_price_per_sqft', 'nonres_rent_per_sqft']:
+        for col in ['improvement_value', 'res_price_per_sqft',
+                    'nonres_rent_per_sqft']:
             df[col] = 0.0
     else:
-        print 'Loading scheduled_development_events from h5'
+        print('Loading scheduled_development_events from h5')
         df = store['scheduled_development_events']
     return df
 
@@ -69,12 +76,15 @@ def scheduled_development_events(store, settings):
 @orca.table('zoning_allowed_uses', cache=True)
 def zoning_allowed_uses(store, parcels):
     parcels_allowed = store['zoning_allowed_uses']
-    parcels = orca.get_table('parcels').to_frame(columns = ['zoning_id',])
-    
-    allowed_df = pd.DataFrame(index = parcels.index)
+    parcels = orca.get_table('parcels').to_frame(columns=['zoning_id', ])
+
+    allowed_df = pd.DataFrame(index=parcels.index)
     for devtype in np.unique(parcels_allowed.development_type_id):
-        devtype_allowed = parcels_allowed[parcels_allowed.development_type_id == devtype].set_index('zoning_id')
-        allowed = misc.reindex(devtype_allowed.development_type_id, parcels.zoning_id)
+        devtype_allowed = (parcels_allowed[
+                               parcels_allowed.development_type_id == devtype].
+                           set_index('zoning_id'))
+        allowed = misc.reindex(devtype_allowed.development_type_id,
+                               parcels.zoning_id)
         df = pd.DataFrame(index=allowed.index)
         df['allowed'] = False
         df[~allowed.isnull()] = True
@@ -86,14 +96,14 @@ def zoning_allowed_uses(store, parcels):
 @orca.table('households', cache=True)
 def households(store):
     df = store['households']
-    df = df[df.building_id > 0]  ##Revisit the allocation and remove GQ from synthetic population?
-    
+    df = df[df.building_id > 0]
+
     p = store['parcels']
     b = store['buildings']
     b['luz'] = misc.reindex(p.luz_id, b.parcel_id)
     df['base_luz'] = misc.reindex(b.luz, df.building_id)
     df['segmentation_col'] = 1
-    
+
     return df
 
 
@@ -102,7 +112,8 @@ def buildings(store):
     df = store['buildings']
     df['res_price_per_sqft'] = 0.0
     df['nonres_rent_per_sqft'] = 0.0
-    #df.residential_units = df.residential_units*2  ##For testing HLCM luz supply constraints only
+    # For testing HLCM luz supply constraints only
+    # df.residential_units = df.residential_units*2
     return df
 
 
@@ -110,12 +121,12 @@ def buildings(store):
 def parcels(store):
     df = store['parcels']
     df['acres'] = df.parcel_acres
-    
-    #Delete duplicate index (parcel_id)
+
+    # Delete duplicate index (parcel_id)
     df['rownum'] = df.index
     df = df.drop_duplicates(subset='rownum', keep='last')
     del df['rownum']
-    
+
     return df
 
 
@@ -154,11 +165,12 @@ def luz_base_indicators(store):
     buildings = store['buildings'][['parcel_id']]
     parcels = store['parcels'][['luz_id']]
     buildings['luz_id'] = misc.reindex(parcels.luz_id, buildings.parcel_id)
-    households['luz_id'] = misc.reindex(buildings.luz_id, households.building_id)
+    households['luz_id'] = misc.reindex(buildings.luz_id,
+                                        households.building_id)
     jobs['luz_id'] = misc.reindex(buildings.luz_id, jobs.building_id)
     hh_luz_base = households.groupby('luz_id').size()
     emp_luz_base = jobs.groupby('luz_id').size()
-    return pd.DataFrame({'hh_base':hh_luz_base, 'emp_base':emp_luz_base})
+    return pd.DataFrame({'hh_base': hh_luz_base, 'emp_base': emp_luz_base})
 
 
 # this specifies the relationships between tables
@@ -170,5 +182,7 @@ orca.broadcast('nodes', 'buildings', cast_index=True, onto_on='node_id')
 orca.broadcast('nodes', 'parcels', cast_index=True, onto_on='node_id')
 orca.broadcast('nodes', 'costar', cast_index=True, onto_on='node_id')
 orca.broadcast('parcels', 'costar', cast_index=True, onto_on='parcel_id')
-orca.broadcast('nodes', 'assessor_transactions', cast_index=True, onto_on='node_id')
-orca.broadcast('parcels', 'assessor_transactions', cast_index=True, onto_on='parcel_id')
+orca.broadcast('nodes', 'assessor_transactions', cast_index=True,
+               onto_on='node_id')
+orca.broadcast('parcels', 'assessor_transactions', cast_index=True,
+               onto_on='parcel_id')
