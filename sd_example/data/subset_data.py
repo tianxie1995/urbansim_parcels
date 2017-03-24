@@ -44,6 +44,7 @@ with pd.HDFStore('sandag.h5') as store:
             parcels.node_id.isin(new_nodes.index)].drop(
             ['apn', 'block_geoid'], axis=1)
         new_store.put('parcels', new_parcels)
+        zones = new_parcels.taz_id.unique().tolist()
 
         print('buildings')
         new_buildings = store.buildings.loc[
@@ -88,6 +89,8 @@ with pd.HDFStore('sandag.h5') as store:
             new_store.put(table, store[table])
 
         travel_data = store.travel_data
+        travel_data.sort_index(inplace=True)
+        travel_data = travel_data.loc[(zones, zones), :]
         travel_data.index.names = [
             str(name) for name in store.travel_data.index.names]
         travel_data.columns = [
