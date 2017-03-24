@@ -27,6 +27,8 @@ def jobs(store):
 @orca.table('travel_data', cache=True)
 def travel_data(store):
     df = store['travel_data']
+    # Some bytes types in python 3
+    df = utils.decode_byte_df(df)
     return df
 
 

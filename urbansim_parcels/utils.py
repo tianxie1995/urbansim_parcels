@@ -1207,3 +1207,34 @@ class SimulationSummaryData(object):
         outf = open(self.zone_indicator_file, "w")
         json.dump(self.zone_output, outf)
         outf.close()
+
+
+def check_store_for_bytes(store):
+    found_byte = False
+    byte_types = (np.bytes_, bytes)
+    with pd.HDFStore(store) as store:
+        for name in store.keys():
+            table = store[name]
+            if table.index.name and type(table.index.name) in byte_types:
+                found_byte = True
+            for col in table.columns:
+                if type(col) in byte_types:
+                    found_byte = True
+    return found_byte
+
+
+def decode_byte_df(df):
+    byte_types = (np.bytes_, bytes)
+
+    if isinstance(df.index, pd.core.index.MultiIndex):
+        new_names = [name.decode() if type(name) in byte_types else name
+                     for name in df.index.names]
+        df.index.set_names(new_names, inplace=True)
+
+    elif df.index.name and type(df.index.name) in byte_types:
+        df.index.name = df.index.name.decode()
+
+    df.columns = [col.decode() if type(col) in byte_types else col
+                  for col in df.columns]
+
+    return df
