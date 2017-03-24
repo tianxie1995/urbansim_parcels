@@ -3,7 +3,6 @@ sudo: false
 python:
 - '2.7'
 - '3.5'
-- '3.6'
 
 install:
 - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
@@ -28,7 +27,10 @@ install:
 - cd .. && git clone -b python3 git@github.com:urbansim/developer.git
 - pip install ./developer
 - cd $TRAVIS_BUILD_DIR && pip install .
+- cd sd_example/data && curl -O https://dl.dropboxusercontent.com/u/69619688/sandiego_data_12042015.zip
+- unzip sandiego_data_12042015.zip
 
 script:
 - cd $TRAVIS_BUILD_DIR && py.test
 - cd $TRAVIS_BUILD_DIR/sf_example && python simulate.py
+- cd $TRAVIS_BUILD_DIR/sd_example && python Simulation.py
