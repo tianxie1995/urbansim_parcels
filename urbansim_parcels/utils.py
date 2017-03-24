@@ -1210,6 +1210,20 @@ class SimulationSummaryData(object):
 
 
 def check_store_for_bytes(store):
+    """
+    Checks HDF5 stores for column names or index names that are bytes types
+    rather than strings, which can break references in a model
+
+    Parameters
+    ----------
+    store : str
+        Path to HDF5 store to check for bytes types
+
+    Returns
+    -------
+    found_byte : bool
+        True if a bytes types is found in a column name or index name
+    """
     found_byte = False
     byte_types = (np.bytes_, bytes)
     with pd.HDFStore(store) as store:
@@ -1224,6 +1238,21 @@ def check_store_for_bytes(store):
 
 
 def decode_byte_df(df):
+    """
+    Converts bytes types to strings in index names and column names
+    of a DataFrame
+
+    Parameters
+    ----------
+    df : DataFrame
+        Input DataFrame to convert
+
+    Returns
+    -------
+    df : DataFrame
+        Output DataFrame, with converted index names and column names
+
+    """
     byte_types = (np.bytes_, bytes)
 
     if isinstance(df.index, pd.core.index.MultiIndex):
@@ -1238,3 +1267,27 @@ def decode_byte_df(df):
                   for col in df.columns]
 
     return df
+
+
+def subset_orca_table(tablename, percentage=.10):
+    """
+    Re-registers an Orca table with a random sample of the table that was
+    registered under the same name before
+
+    Parameters
+    ----------
+    tablename : str
+        Name of the table registered in Orca
+    percentage : numeric
+        Percentage of the original length of the table to create a
+        random sample with
+
+    Returns
+    -------
+    Nothing
+    """
+
+    old_df = orca.get_table(tablename).to_frame()
+    new_length = len(old_df) * percentage
+    new_df = old_df.sample(n=new_length)
+    orca.add_table(tablename, new_df)
