@@ -21,8 +21,8 @@ from sd_example import custom_datasources
 
 
 @orca.step('build_networks')
-def build_networks(parcels):
-    st = pd.HDFStore(os.path.join(misc.data_dir(), "osm_sandag.h5"), "r")
+def build_networks(parcels, net_store):
+    st = net_store
     nodes, edges = st.nodes, st.edges
     net = pdna.Network(nodes["x"], nodes["y"], edges["from"], edges["to"],
                        edges[["weight"]])

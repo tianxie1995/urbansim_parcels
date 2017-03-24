@@ -2,3 +2,6 @@
 *
 # Except this file
 !.gitignore
+!osm_sandag_subset.h5
+!sandag_subset.h5
+!subset_data.py

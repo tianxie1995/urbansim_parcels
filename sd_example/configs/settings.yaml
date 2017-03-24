@@ -1,4 +1,6 @@
-store: sandag.h5
+store: sandag_subset.h5
+
+net_store: osm_sandag_subset.h5
 
 urbancanvas: False
 

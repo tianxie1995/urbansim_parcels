@@ -1,14 +1,8 @@
 import os
 import orca
 from urbansim_parcels import models
-from urbansim_parcels.utils import subset_orca_table
 from sd_example import custom_models
 
-if os.environ.get('TRAVIS') == 'true':
-    # Subset tables in Travis build due to memory constraints
-    subset_orca_table('households')
-    subset_orca_table('jobs')
-    subset_orca_table('buildings')
 
 first_year = 2013
 last_year = 2013

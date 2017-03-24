@@ -1,5 +1,5 @@
 language: python
-sudo: required
+sudo: false
 python:
 - '2.7'
 - '3.5'
@@ -27,8 +27,6 @@ install:
 - cd .. && git clone -b python3 git@github.com:urbansim/developer.git
 - pip install ./developer
 - cd $TRAVIS_BUILD_DIR && pip install .
-- cd sd_example/data && curl -O https://dl.dropboxusercontent.com/u/69619688/sandiego_data_12042015.zip
-- unzip sandiego_data_12042015.zip
 
 script:
 - cd $TRAVIS_BUILD_DIR && py.test

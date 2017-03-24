@@ -1267,27 +1267,3 @@ def decode_byte_df(df):
                   for col in df.columns]
 
     return df
-
-
-def subset_orca_table(tablename, percentage=.10):
-    """
-    Re-registers an Orca table with a random sample of the table that was
-    registered under the same name before
-
-    Parameters
-    ----------
-    tablename : str
-        Name of the table registered in Orca
-    percentage : numeric
-        Percentage of the original length of the table to create a
-        random sample with
-
-    Returns
-    -------
-    Nothing
-    """
-
-    old_df = orca.get_table(tablename).to_frame()
-    new_length = len(old_df) * percentage
-    new_df = old_df.sample(n=new_length)
-    orca.add_table(tablename, new_df)

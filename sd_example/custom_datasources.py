@@ -17,6 +17,13 @@ def conn_string():
     return ""
 
 
+@orca.injectable('net_store', cache=True)
+def net_store(settings):
+    return pd.HDFStore(
+        os.path.join(misc.data_dir(), settings["net_store"]),
+        mode='r')
+
+
 @orca.table('jobs', cache=True)
 def jobs(store):
     df = store['jobs']
