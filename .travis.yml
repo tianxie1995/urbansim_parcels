@@ -24,7 +24,7 @@ install:
      pip install pandana; else
      pip install https://github.com/UDST/osmnet/archive/python3-support.zip &&
      pip install https://github.com/UDST/pandana/archive/python3-support.zip; fi
-- cd .. && git clone -b python3 git@github.com:urbansim/developer.git
+- cd .. && git clone -b dev git@github.com:urbansim/developer.git
 - pip install ./developer
 - cd $TRAVIS_BUILD_DIR && pip install .
 
