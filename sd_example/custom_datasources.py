@@ -9,11 +9,17 @@ import pandas as pd
 import orca
 from urbansim.utils import misc
 from urbansim_parcels import utils
+from sd_example import custom_utils
 
 
 @orca.injectable('conn_string', cache=True)
 def conn_string():
     return ""
+
+
+@orca.injectable("summary", cache=True)
+def simulation_summary_data(run_number):
+    return custom_utils.SimulationSummaryData(run_number)
 
 
 @orca.injectable('net_store', cache=True)

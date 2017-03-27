@@ -9,6 +9,7 @@ from urbansim_parcels import variables
 from sf_example import custom_datasources
 from sf_example import custom_variables
 
+
 @orca.step("diagnostic_output")
 def diagnostic_output(households, buildings, parcels, zones, year, summary):
     households = households.to_frame()

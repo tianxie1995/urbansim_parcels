@@ -8,8 +8,6 @@ import pandas as pd
 from urbansim.utils import misc
 import yaml
 
-from urbansim_parcels import utils
-
 warnings.filterwarnings('ignore', category=pd.io.pytables.PerformanceWarning)
 pd.options.mode.chained_assignment = None
 
@@ -39,11 +37,6 @@ def hdfstore(settings):
     return pd.HDFStore(
         os.path.join(misc.data_dir(), settings["store"]),
         mode='r')
-
-
-@orca.injectable("summary", cache=True)
-def simulation_summary_data(run_number):
-    return utils.SimulationSummaryData(run_number)
 
 
 @orca.injectable("building_type_map")

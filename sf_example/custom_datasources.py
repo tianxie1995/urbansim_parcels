@@ -10,6 +10,7 @@ import pandas as pd
 from urbansim.utils import misc
 
 from urbansim_parcels import utils
+from sf_example import custom_utils
 
 warnings.filterwarnings('ignore', category=pd.io.pytables.PerformanceWarning)
 pd.options.mode.chained_assignment = None
@@ -23,6 +24,11 @@ def uuid_hex():
 @orca.injectable("scenario")
 def scenario(settings):
     return settings["scenario"]
+
+
+@orca.injectable("summary", cache=True)
+def simulation_summary_data(run_number):
+    return custom_utils.SimulationSummaryData(run_number)
 
 
 @orca.injectable("scenario_inputs")
