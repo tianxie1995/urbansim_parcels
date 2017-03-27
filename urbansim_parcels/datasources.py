@@ -1,10 +1,8 @@
 from __future__ import print_function, division, absolute_import
 
 import os
-import uuid
 import warnings
 
-import numpy as np
 import orca
 import pandas as pd
 from urbansim.utils import misc

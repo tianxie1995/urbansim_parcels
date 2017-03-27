@@ -9,8 +9,6 @@ import pandas as pd
 
 import orca
 import pandana as pdna
-from urbansim.utils import misc
-from urbansim.utils import networks
 from urbansim.models import transition
 
 from urbansim_parcels import utils

@@ -1,10 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 import os
-import time
-import random
 
-import numpy as np
 import orca
 import pandana as pdna
 import pandas as pd

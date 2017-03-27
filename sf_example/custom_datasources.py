@@ -8,7 +8,6 @@ import numpy as np
 import orca
 import pandas as pd
 from urbansim.utils import misc
-import yaml
 
 from urbansim_parcels import utils
 
