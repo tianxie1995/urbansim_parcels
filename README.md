@@ -22,6 +22,7 @@ We recommend running UrbanSim models in a virtual environment through conda or v
 ```
 git clone https://github.com/urbansim/urbansim_parcels
 cd urbansim_parcels
+python setup.py install
 ```
 
 The San Francisco model is a simple example:
