@@ -39,113 +39,6 @@ def random_type(row):
 
 
 #####################
-# ZONES VARIABLES
-#####################
-
-
-@orca.column('zones', 'sum_residential_units')
-def sum_residential_units(buildings):
-    return buildings.residential_units.groupby(buildings.zone_id).sum().apply(np.log1p)
-
-
-@orca.column('zones', 'sum_job_spaces')
-def sum_nonresidential_units(buildings):
-    return buildings.job_spaces.groupby(buildings.zone_id).sum().apply(np.log1p)
-
-
-@orca.column('zones', 'population')
-def population(households, zones):
-    s = households.persons.groupby(households.zone_id).sum().apply(np.log1p)
-    return s.reindex(zones.index).fillna(0)
-
-
-@orca.column('zones', 'jobs')
-def jobs(jobs):
-    return jobs.zone_id.groupby(jobs.zone_id).size().apply(np.log1p)
-
-
-@orca.column('zones', 'ave_lot_sqft')
-def ave_lot_sqft(buildings, zones):
-    s = buildings.unit_lot_size.groupby(buildings.zone_id).quantile().apply(np.log1p)
-    return s.reindex(zones.index).fillna(s.quantile())
-
-
-@orca.column('zones', 'ave_income')
-def ave_income(households, zones):
-    s = households.income.groupby(households.zone_id).quantile().apply(np.log1p)
-    return s.reindex(zones.index).fillna(s.quantile())
-
-
-@orca.column('zones', 'hhsize')
-def hhsize(households, zones):
-    s = households.persons.groupby(households.zone_id).quantile().apply(np.log1p)
-    return s.reindex(zones.index).fillna(s.quantile())
-
-
-@orca.column('zones', 'ave_unit_sqft')
-def ave_unit_sqft(buildings, zones):
-    s = buildings.unit_sqft[buildings.general_type == "Residential"]\
-        .groupby(buildings.zone_id).quantile().apply(np.log1p)
-    return s.reindex(zones.index).fillna(s.quantile())
-
-
-@orca.column('zones', 'sfdu')
-def sfdu(buildings, zones):
-    s = buildings.residential_units[buildings.building_type_id == 1]\
-        .groupby(buildings.zone_id).sum().apply(np.log1p)
-    return s.reindex(zones.index).fillna(0)
-
-
-@orca.column('zones', 'poor')
-def poor(households, zones):
-    s = households.persons[households.income < 40000]\
-        .groupby(households.zone_id).sum().apply(np.log1p)
-    return s.reindex(zones.index).fillna(0)
-
-
-@orca.column('zones', 'renters')
-def renters(households, zones):
-    s = households.persons[households.tenure == 2]\
-        .groupby(households.zone_id).sum().apply(np.log1p)
-    return s.reindex(zones.index).fillna(0)
-
-
-@orca.column('zones', 'zone_id')
-def zone_id(zones):
-    return zones.index
-
-
-@orca.column('zones_prices', 'residential')
-def residential(buildings):
-    return buildings\
-        .residential_sales_price[buildings.general_type == "Residential"]\
-        .groupby(buildings.zone_id).quantile()
-
-
-@orca.column('zones_prices', 'retail')
-def retail(buildings):
-    return buildings.non_residential_rent[buildings.general_type == "Retail"]\
-        .groupby(buildings.zone_id).quantile()
-
-
-@orca.column('zones_prices', 'office')
-def office(buildings):
-    return buildings.non_residential_rent[buildings.general_type == "Office"]\
-        .groupby(buildings.zone_id).quantile()
-
-
-@orca.column('zones_prices', 'industrial')
-def industrial(buildings):
-    return buildings.non_residential_rent[buildings.general_type == "Industrial"]\
-        .groupby(buildings.zone_id).quantile()
-
-
-@orca.column('zones_prices', 'zone_id')
-def zone_id(zones):
-    return zones.index
-
-
-#####################
 # BUILDINGS VARIABLES
 #####################
 
@@ -163,27 +56,6 @@ def zone_id(buildings, parcels):
 @orca.column('buildings', 'general_type', cache=True)
 def general_type(buildings, building_type_map):
     return buildings.building_type_id.map(building_type_map)
-
-
-@orca.column('buildings', 'unit_sqft', cache=True, cache_scope='iteration')
-def unit_sqft(buildings):
-    return buildings.building_sqft / buildings.residential_units.replace(0, 1)
-
-
-@orca.column('buildings', 'unit_lot_size', cache=True, cache_scope='iteration')
-def unit_lot_size(buildings, parcels):
-    return misc.reindex(parcels.parcel_size, buildings.parcel_id) / \
-        buildings.residential_units.replace(0, 1)
-
-
-@orca.column('buildings', 'lot_size_per_unit', cache=True)
-def lot_size_per_unit(buildings, parcels):
-    return misc.reindex(parcels.lot_size_per_unit, buildings.parcel_id)
-
-
-@orca.column('buildings', 'sqft_per_job', cache=True)
-def sqft_per_job(buildings, building_sqft_per_job):
-    return buildings.building_type_id.fillna(-1).map(building_sqft_per_job)
 
 
 @orca.column('buildings', 'job_spaces', cache=True)
@@ -248,19 +120,6 @@ def zone_id(jobs, buildings):
 #####################
 
 
-@orca.column('parcels', 'max_far', cache=True)
-def max_far(parcels, scenario, scenario_inputs):
-    return utils.conditional_upzone(scenario,
-                                    scenario_inputs,
-                                    "max_far", "far_up").\
-        reindex(parcels.index).fillna(0)
-
-
-@orca.column('parcels', 'max_height', cache=True, cache_scope='iteration')
-def max_height(parcels, zoning_baseline):
-    return zoning_baseline.max_height.reindex(parcels.index).fillna(0)
-
-
 @orca.column('parcels', 'parcel_size', cache=True)
 def parcel_size(parcels, settings):
     return parcels.shape_area * settings.get('parcel_size_factor', 1)
@@ -270,12 +129,6 @@ def parcel_size(parcels, settings):
 def parcel_acres(parcels):
     # parcel_size needs to be in sqft
     return parcels.parcel_size / 43560.0
-
-
-@orca.column('parcels', 'total_units', cache=True, cache_scope='iteration')
-def total_units(parcels, buildings):
-    return buildings.residential_units.groupby(buildings.parcel_id).sum().\
-        reindex(parcels.index).fillna(0)
 
 
 @orca.column('parcels', 'total_job_spaces', cache=False,
@@ -291,17 +144,6 @@ def total_sqft(parcels, buildings):
         reindex(parcels.index).fillna(0)
 
 
-# @orca.column('parcels', 'zoned_du', cache=True)
-# def zoned_du(parcels):
-#     return (parcels.max_dua * parcels.parcel_acres).\
-#         reindex(parcels.index).fillna(0).round().astype('int')
-#
-#
-# @orca.column('parcels', 'zoned_du_underbuild')
-# def zoned_du_underbuild(parcels):
-#     return (parcels.zoned_du - parcels.total_residential_units).clip(lower=0)
-
-
 @orca.column('parcels', 'ave_sqft_per_unit')
 def ave_sqft_per_unit(parcels, nodes, settings):
     if len(nodes) == 0:
@@ -312,11 +154,6 @@ def ave_sqft_per_unit(parcels, nodes, settings):
     if clip is not None:
         s = s.clip(lower=clip['lower'], upper=clip['upper'])
     return s
-
-
-@orca.column('parcels', 'ave_sqft_per_unit_placeholder')
-def ave_sqft_per_unit_placeholder(parcels):
-    return pd.Series(data=1000, index=parcels.index)
 
 
 # this just changes the column name for reverse compatibility
@@ -331,22 +168,9 @@ def total_residential_units(parcels, buildings):
         reindex(parcels.index).fillna(0)
 
 
-@orca.column('parcels', 'lot_size_per_unit')
-def log_size_per_unit(parcels):
-    return parcels.parcel_size / parcels.total_residential_units.replace(0, 1)
-
-
 # returns the oldest building on the land and fills missing values with 9999 -
 # for use with historical preservation
 @orca.column('parcels', 'oldest_building')
 def oldest_building(parcels, buildings):
     return buildings.year_built.groupby(buildings.parcel_id).min().\
         reindex(parcels.index).fillna(9999)
-
-
-@orca.column('parcels', 'land_cost')
-def land_cost(parcels, parcel_sales_price_sqft_func):
-    # TODO
-    # this needs to account for cost for the type of building it is
-    return (parcels.total_sqft * parcel_sales_price_sqft_func("residential")).\
-        reindex(parcels.index).fillna(0)

@@ -1,5 +1,7 @@
 from urbansim.utils import misc
-from urbansim_parcels import models, utils
+from urbansim_parcels import models
+from urbansim_parcels import utils
+from sf_example import custom_models
 import pandas as pd
 import orca
 
