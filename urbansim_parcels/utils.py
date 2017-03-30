@@ -383,7 +383,7 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
     indexes = np.repeat(vacant_units.index.values,
                         vacant_units.values.astype('int'))
     isin = pd.Series(indexes).isin(locations_df.index)
-    missing = len(isin[isin is False])
+    missing = len(isin[isin == False])  # noqa
     indexes = indexes[isin.values]
     units = locations_df.loc[indexes].reset_index()
     check_nas(units)
