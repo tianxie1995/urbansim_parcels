@@ -32,9 +32,8 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
                             groupby('zone_id').non_residential_sqft.sum())
     zones['office_sqft'] = (buildings.query('general_type == "Office"').
                             groupby('zone_id').non_residential_sqft.sum())
-    zones['industrial_sqft'] = (
-        buildings.query('general_type == "Industrial"').
-            groupby('zone_id').non_residential_sqft.sum())
+    zones['industrial_sqft'] = (buildings.query('general_type == "Industrial"')
+                                .groupby('zone_id').non_residential_sqft.sum())
 
     zones['average_income'] = households.groupby('zone_id').income.quantile()
     zones['household_size'] = households.groupby('zone_id').persons.quantile()
