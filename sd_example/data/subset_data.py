@@ -4,14 +4,16 @@ import pandana as pdna
 import numpy as np
 
 # This script was used to create a subset of the San Diego data files
+# Must use Python 2.7 as unicodes must be pickled in a protocol compatible
+# with Python 2.7 (works for 3.5 too).
 
 # Small section of San Diego
 bbox = (-117.157516, 32.715666, -117.095032, 32.767068)
 west, south, east, north = bbox
 
-new_store = pd.HDFStore('sandag_subset_test.h5', 'w',
+new_store = pd.HDFStore('sandag_subset.h5', 'w',
                         complib='zlib', complevel=1)
-new_net_store = pd.HDFStore('osm_sandag_subset_test.h5', 'w',
+new_net_store = pd.HDFStore('osm_sandag_subset.h5', 'w',
                             complib='zlib', complevel=1)
 
 with pd.HDFStore('sandag.h5') as store:
@@ -40,26 +42,26 @@ with pd.HDFStore('sandag.h5') as store:
 
     print('Save other tables to new store')
 
-    new_parcels = parcels.loc[parcels.node_id.isin(new_nodes.index)].drop(
-        ['apn', 'geom', 'block_geoid', 'centroid'], axis=1
-    )
+    new_parcels = (parcels
+                   .loc[parcels.node_id.isin(new_nodes.index)]
+                   # drop unused mixed type or text columns
+                   .drop(['apn', 'geom', 'block_geoid', 'centroid'], axis=1))
     new_store.put('parcels', new_parcels)
     zones = new_parcels.taz_id.unique().tolist()
 
-    new_buildings = store.buildings.loc[
-        store.buildings.parcel_id.isin(new_parcels.index)].drop('note', axis=1)
+    new_buildings = (store.buildings
+                     .loc[store.buildings.parcel_id.isin(new_parcels.index)]
+                     .drop('note', axis=1))
     new_store.put('buildings', new_buildings)
 
     new_households = store.households.loc[
-        (store.households.building_id.isin(new_buildings.index)) |
-        (store.households.building_id == -1)
-    ]
+        (store.households.building_id.isin(new_buildings.index))
+        | (store.households.building_id == -1)]
     new_store.put('households', new_households)
 
     new_jobs = store.jobs.loc[
-        (store.jobs.building_id.isin(new_buildings.index)) |
-        (store.jobs.building_id == -1)
-    ]
+        (store.jobs.building_id.isin(new_buildings.index))
+        | (store.jobs.building_id == -1)]
     new_store.put('jobs', new_jobs)
 
     other_tables = ['annual_household_control_totals',
@@ -76,6 +78,7 @@ with pd.HDFStore('sandag.h5') as store:
     for table in other_tables:
         print('Adding {} to store'.format(table))
         t = store[table]
+        # Conversions to string/unicode
         if 'name' in t.columns:
             t['name'] = t['name'].str.encode('utf-8')
         if 'note' in t.columns:
@@ -86,11 +89,12 @@ with pd.HDFStore('sandag.h5') as store:
 
     print('Update travel data table')
     travel_data = store.travel_data
+    # Have to sort multi-index before subsetting
     travel_data.sort_index(inplace=True)
+    # Subset multi-index
     travel_data = travel_data.loc[(zones, zones), :]
 
     bytes_types = (np.bytes_, bytes)
-
     travel_data.index.names = [
         name.decode() if type(name) in bytes_types else name
         for name in store.travel_data.index.names]
@@ -101,4 +105,3 @@ with pd.HDFStore('sandag.h5') as store:
     new_store.put('travel_data', travel_data)
 
 new_store.close()
-
