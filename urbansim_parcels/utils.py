@@ -14,6 +14,7 @@ from urbansim.models import transition
 from urbansim.models.supplydemand import supply_and_demand
 from developer import sqftproforma
 from developer import develop
+from developer import research
 from urbansim.utils import misc
 
 
@@ -606,6 +607,11 @@ def full_transition(agents, agent_controls, year, settings, location_fname,
 def _print_number_unplaced(df, fieldname):
     print("Total currently unplaced: {:d}".format(
         df[fieldname].value_counts().get(-1, 0)))
+
+
+def market_research(parcels, buildings):
+    absorption = research.AbsorptionModel(parcels, buildings)
+    pass
 
 
 def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
