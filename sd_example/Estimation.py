@@ -67,6 +67,5 @@ orca.run(["hlcm_estimate"])
 
 # In[24]:
 
-orca.run(["households_transition_basic"], iter_vars = [2013])
+orca.run(["households_transition_basic"], iter_vars=[2013])
 orca.run(["hlcm_simulate"])
-

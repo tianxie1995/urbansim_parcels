@@ -1,13 +1,19 @@
-from __future__ import print_function, division, absolute_import
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
 
 import orca
 import numpy as np
 import pandas as pd
-from urbansim.models import RegressionModel, SegmentedRegressionModel, \
-    MNLDiscreteChoiceModel, SegmentedMNLDiscreteChoiceModel, \
-    GrowthRateTransition, transition
+from urbansim.models import RegressionModel
+from urbansim.models import SegmentedRegressionModel
+from urbansim.models import MNLDiscreteChoiceModel
+from urbansim.models import SegmentedMNLDiscreteChoiceModel
+from urbansim.models import GrowthRateTransition
+from urbansim.models import transition
 from urbansim.models.supplydemand import supply_and_demand
-from developer import sqftproforma, develop
+from developer import sqftproforma
+from developer import develop
 from urbansim.utils import misc
 
 
@@ -45,8 +51,8 @@ def conditional_upzone(scenario, scenario_inputs, attr_name, upzone_name):
         # it should be unrestricted now - so nas in the first series need
         # to be left, but nas in the second series need to be ignored
         # there might be a better way to express this
-        attr = pd.concat([attr, upzone.fillna(attr)], axis=1). \
-            max(skipna=True, axis=1)
+        attr = pd.concat(
+            [attr, upzone.fillna(attr)], axis=1).max(skipna=True, axis=1)
     return attr
 
 
@@ -240,8 +246,8 @@ def hedonic_estimate(cfg, tbl, join_tbls, out_cfg=None):
         A list of land use dataframes to give neighborhood info around the
         buildings - will be joined to the buildings using existing broadcasts
     out_cfg : string, optional
-        The name of the yaml config file to which to write the estimation results.
-        If not given, the input file cfg is overwritten.
+        The name of the yaml config file to which to write the estimation
+        results. If not given, the input file cfg is overwritten.
     """
     cfg = misc.config(cfg)
     df = to_frame(tbl, join_tbls, cfg)
@@ -297,8 +303,8 @@ def lcm_estimate(cfg, choosers, chosen_fname, buildings, join_tbls,
         A list of land use dataframes to give neighborhood info around the
         buildings - will be joined to the buildings using existing broadcasts
     out_cfg : string, optional
-        The name of the yaml config file to which to write the estimation results.
-        If not given, the input file cfg is overwritten.
+        The name of the yaml config file to which to write the estimation
+        results. If not given, the input file cfg is overwritten.
     """
     cfg = misc.config(cfg)
     choosers = to_frame(choosers, [], cfg, additional_columns=[chosen_fname])
@@ -351,11 +357,11 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
     choosers_df = to_frame(choosers, [], cfg, additional_columns=[out_fname])
 
     additional_columns = [supply_fname, vacant_fname]
-    if enable_supply_correction is not None and \
-                    "submarket_col" in enable_supply_correction:
+    if (enable_supply_correction is not None
+            and "submarket_col" in enable_supply_correction):
         additional_columns += [enable_supply_correction["submarket_col"]]
-    if enable_supply_correction is not None and \
-                    "price_col" in enable_supply_correction:
+    if (enable_supply_correction is not None
+            and "price_col" in enable_supply_correction):
         additional_columns += [enable_supply_correction["price_col"]]
     locations_df = to_frame(buildings, join_tbls, cfg,
                             additional_columns=additional_columns)
@@ -377,7 +383,7 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
     indexes = np.repeat(vacant_units.index.values,
                         vacant_units.values.astype('int'))
     isin = pd.Series(indexes).isin(locations_df.index)
-    missing = len(isin[isin == False])
+    missing = len(isin[isin == False])  # noqa
     indexes = indexes[isin.values]
     units = locations_df.loc[indexes].reset_index()
     check_nas(units)
@@ -442,8 +448,8 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
         # shifters directly to buildings and ignore unit prices
         orca.add_column(buildings.name,
                         price_col + "_hedonic", buildings[price_col])
-        new_prices = buildings[price_col] * \
-                     submarkets_ratios.loc[buildings[submarket_col]].values
+        new_prices = (buildings[price_col]
+                      * submarkets_ratios.loc[buildings[submarket_col]].values)
         buildings.update_col_from_series(price_col, new_prices)
         print("Adjusted Prices")
         print(buildings[price_col].describe())
@@ -488,11 +494,11 @@ def simple_relocation(choosers, relocation_rate, fieldname, cast=True):
 
     Parameters
     ----------
-    tbl : DataFrameWrapper or DataFrame
+    choosers : DataFrameWrapper or DataFrame
         Table of agents that might relocate
-    rate : float
+    relocation_rate : float
         Rate of relocation
-    location_fname : str
+    fieldname : str
         The field name in the resulting dataframe to set to -1 (to unplace
         new agents)
     cast : boolean
@@ -587,8 +593,8 @@ def full_transition(agents, agent_controls, year, settings, location_fname,
         print("Total %s before transition: %s" % (table_name, len(table)))
     tran = transition.TabularTotalsTransition(ct, settings['total_column'])
     model = transition.TransitionModel(tran)
-    new, added_hh_idx, new_linked = model.transition(hh, year,
-                                                     linked_tables=linked_tables)
+    new, added_hh_idx, new_linked = model.transition(
+        hh, year, linked_tables=linked_tables)
     new.loc[added_hh_idx, location_fname] = -1
     print("Total agents after transition: {}".format(len(new)))
     orca.add_table(agents.name, new)
@@ -708,7 +714,7 @@ def run_feasibility(parcels, parcel_price_callback,
 
 def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     redev_buildings = old_buildings.parcel_id.isin(new_buildings.parcel_id)
-    l = len(old_buildings)
+    l1 = len(old_buildings)
     drop_buildings = old_buildings[redev_buildings]
 
     if "dropped_buildings" in orca.orca._TABLES:
@@ -720,9 +726,9 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
 
     old_buildings = old_buildings[np.logical_not(redev_buildings)]
     l2 = len(old_buildings)
-    if l2 - l > 0:
+    if l2 - l1 > 0:
         print("Dropped {} buildings because they were redeveloped".format(
-            l2 - l))
+            l2 - l1))
 
     for tbl in unplace_agents:
         agents = orca.get_table(tbl).local
@@ -986,18 +992,19 @@ def scheduled_development_events(buildings, new_buildings,
                                  remove_developed_buildings=True,
                                  unplace_agents=['households', 'jobs']):
     """
-    This acts somewhat like developer, but is not dependent on real estate feasibility
-    in order to build - these are buildings that we force to be built, usually because
-    we know they are scheduled to be built at some point in the future because of our
-    knowledge of existing permits (or maybe we just read the newspaper).
+    This acts somewhat like developer, but is not dependent on real estate
+    feasibility in order to build - these are buildings that we force to be
+    built, usually because we know they are scheduled to be built at some
+    point in the future because of our knowledge of existing permits
+    (or maybe we just read the newspaper).
 
     Parameters
     ----------
     buildings : DataFrame wrapper
         Just pass in the building dataframe wrapper
     new_buildings : DataFrame
-        The new buildings to add to out buildings table.  They should have the same
-        columns as the local columns in the buildings table.
+        The new buildings to add to out buildings table.  They should have the
+        same columns as the local columns in the buildings table.
     """
 
     print("Adding {:,} buildings as scheduled development events".format(

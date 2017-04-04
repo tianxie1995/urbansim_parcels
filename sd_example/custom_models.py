@@ -146,8 +146,8 @@ def scheduled_development_events(buildings, scheduled_development_events):
     year = get_year()
     sched_dev = scheduled_development_events.to_frame()
     sched_dev = sched_dev[sched_dev.year_built == year]
-    sched_dev[
-        'residential_sqft'] = sched_dev.sqft_per_unit * sched_dev.residential_units
+    sched_dev['residential_sqft'] = (sched_dev.sqft_per_unit
+                                     * sched_dev.residential_units)
     sched_dev['job_spaces'] = sched_dev.non_residential_sqft / 400
     if len(sched_dev) > 0:
         max_bid = buildings.index.values.max()
@@ -179,14 +179,20 @@ def model_integration_indicators():
     print('Exporting indicators: space by LUZ')
     b = orca.get_table('buildings')
     b = b.to_frame(b.local_columns + ['luz_id'])
-    luz_res_indicators = b[b.residential_units > 0].groupby(['luz_id',
-                                                             'development_type_id']).residential_units.sum().reset_index()
+    luz_res_indicators = (b[b.residential_units > 0]
+                          .groupby(['luz_id', 'development_type_id'])
+                          .residential_units
+                          .sum()
+                          .reset_index())
     luz_res_indicators.columns = ['luz_id', 'development_type_id',
                                   'residential_units']
     luz_res_indicators.to_csv('./data/luz_du_%s.csv' % year, index=False)
 
-    luz_nonres_indicators = b[b.non_residential_sqft > 0].groupby(['luz_id',
-                                                                   'development_type_id']).non_residential_sqft.sum().reset_index()
+    luz_nonres_indicators = (b[b.non_residential_sqft > 0]
+                             .groupby(['luz_id', 'development_type_id'])
+                             .non_residential_sqft
+                             .sum()
+                             .reset_index())
     luz_nonres_indicators.columns = ['luz_id', 'development_type_id',
                                      'non_residential_sqft']
     luz_nonres_indicators.to_csv('./data/luz_nrsf_%s.csv' % year, index=False)

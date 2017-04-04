@@ -41,8 +41,8 @@ class SimulationSummaryData(object):
     def add_zone_output(self, zones_df, name, year, round=2):
         """
         Pass in a dataframe and this function will store the results in the
-        simulation state to write out at the end (to describe how the simulation
-        changes over time)
+        simulation state to write out at the end (to describe how the
+        simulation changes over time)
 
         Parameters
         ----------
@@ -50,8 +50,8 @@ class SimulationSummaryData(object):
             dataframe of indicators whose index is the zone_id and columns are
             indicators describing the simulation
         name : string
-            The name of the dataframe to use to differentiate all the sources of
-            the indicators
+            The name of the dataframe to use to differentiate all the sources
+            of the indicators
         year : int
             The year to associate with these indicators
         round : int
@@ -76,9 +76,9 @@ class SimulationSummaryData(object):
         else:
             d = self.zone_output
 
-        assert d["index"] == list(zones_df.index), "Passing in zones " \
-                                                   "dataframe that is not aligned on the same index as a previous " \
-                                                   "dataframe"
+        assert d["index"] == (list(zones_df.index),
+                              "Passing in zones dataframe that is not aligned"
+                              "on the same index as a previous dataframe")
 
         if year not in d["years"]:
             d["years"].append(year)
@@ -120,9 +120,9 @@ class SimulationSummaryData(object):
 
         if self.parcel_output is not None:
             # merge with old  parcel output
-            self.parcel_output = \
-                pd.concat([self.parcel_output, new_parcel_output]). \
-                    reset_index(drop=True)
+            self.parcel_output = (
+                pd.concat([self.parcel_output, new_parcel_output])
+                .reset_index(drop=True))
         else:
             self.parcel_output = new_parcel_output
 

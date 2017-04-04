@@ -216,7 +216,7 @@ def year_built_1980to1990(assessor_transactions):
             & (assessor_transactions.year_built < 1990))
 
 
-####NODES
+# NODES
 
 @orca.column('nodes', 'nonres_occupancy_3000m')
 def nonres_occupancy_3000m(nodes):
@@ -354,9 +354,9 @@ def building_sqft(buildings):
 def sqft_per_unit(buildings):
     sqft_per_unit = pd.Series(np.zeros(len(buildings)) * 1.0,
                               index=buildings.index)
-    sqft_per_unit[buildings.residential_units > 0] = \
-    buildings.residential_sqft[buildings.residential_units > 0] / \
-    buildings.residential_units[buildings.residential_units > 0]
+    sqft_per_unit[buildings.residential_units > 0] = (
+        buildings.residential_sqft[buildings.residential_units > 0]
+        / buildings.residential_units[buildings.residential_units > 0])
     return sqft_per_unit
 
 
@@ -490,10 +490,12 @@ def luz_id_households(households, buildings):
 def activity_id(households):
     idx_38 = (households.income < 25000) & (households.persons < 3)
     idx_39 = (households.income < 25000) & (households.persons >= 3)
-    idx_40 = (households.income >= 25000) & (households.income < 150000) & (
-    households.persons < 3)
-    idx_41 = (households.income >= 25000) & (households.income < 150000) & (
-    households.persons >= 3)
+    idx_40 = ((households.income >= 25000)
+              & (households.income < 150000)
+              & (households.persons < 3))
+    idx_41 = ((households.income >= 25000)
+              & (households.income < 150000)
+              & (households.persons >= 3))
     idx_42 = (households.income >= 150000) & (households.persons < 3)
     idx_43 = (households.income >= 150000) & (households.persons >= 3)
     return (38 * idx_38
