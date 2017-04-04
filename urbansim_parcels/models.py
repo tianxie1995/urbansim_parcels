@@ -134,6 +134,16 @@ def price_vars(net):
     orca.add_table("nodes", nodes)
 
 
+@orca.step('real_estate_market_vars')
+def real_estate_market_vars(parcels, buildings):
+    pass
+
+
+@orca.step('market_research')
+def market_research(parcels, buildings):
+    utils.market_research(parcels, buildings)
+
+
 @orca.step('feasibility')
 def feasibility(parcels,
                 parcel_sales_price_sqft_func,
