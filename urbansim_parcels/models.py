@@ -134,14 +134,16 @@ def price_vars(net):
     orca.add_table("nodes", nodes)
 
 
-@orca.step('real_estate_market_vars')
-def real_estate_market_vars(parcels, buildings):
-    pass
-
-
-@orca.step('market_research')
-def market_research(parcels, buildings):
-    utils.market_research(parcels, buildings)
+@orca.step('regional_absorption')
+def regional_absorption(year, absorption, buildings,
+                        households, jobs, new_households, new_jobs):
+    # absorption = utils.run_absorption(year, absorption, buildings,
+    #                                   households, new_households,
+    #                                   jobs, new_jobs, 400)
+    absorption = utils.simple_absorption(year, absorption, buildings,
+                                         households, new_households,
+                                         jobs, new_jobs, 400.0)
+    print(absorption)
 
 
 @orca.step('feasibility')

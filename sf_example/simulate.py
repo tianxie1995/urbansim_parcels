@@ -18,6 +18,7 @@ orca.run([
     "elcm_simulate",  # employment location choice
     "simple_jobs_transition",  # jobs transition
 
+    "regional_absorption",
     "feasibility",  # compute development feasibility
     "residential_developer",  # build residential buildings
     "non_residential_developer",  # build non-residential buildings

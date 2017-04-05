@@ -550,6 +550,7 @@ def simple_transition(tbl, rate, location_fname):
 
     df.loc[added, location_fname] = -1
     orca.add_table(tbl.name, df)
+    orca.add_table('new_{}'.format(tbl.name), added)
 
 
 def full_transition(agents, agent_controls, year, settings, location_fname,
@@ -609,9 +610,135 @@ def _print_number_unplaced(df, fieldname):
         df[fieldname].value_counts().get(-1, 0)))
 
 
-def market_research(parcels, buildings):
-    absorption = research.AbsorptionModel(parcels, buildings)
-    pass
+def annual_vacancy(agents, buildings, residential):
+    """
+    
+    Parameters
+    ----------
+    agents
+    buildings
+    residential
+
+    Returns
+    -------
+
+    """
+
+    agents_per_building = agents.building_id.value_counts()
+
+    if residential:
+        vacancies = (buildings.residential_units
+                     - agents_per_building)
+    else:
+        job_sqft_per_building = (agents_per_building
+                                 * buildings.sqft_per_job)
+        vacancies = (buildings.non_residential_sqft
+                     - job_sqft_per_building)
+        # return to units of job spaces
+        vacancies /= buildings.sqft_per_job
+
+    return vacancies.sum()
+
+
+def run_absorption(year, absorption, buildings,
+                   households, new_households,
+                   jobs, new_jobs,
+                   sqft_per_job):
+    """
+    Register a DataFrame indexed by year, with uses as columns. Values are
+    number of years to absorb existing inventory given yearly demand. 
+    
+    Parameters
+    ----------
+    year
+    absorption
+    buildings
+    households
+    new_households
+    jobs
+    new_jobs
+    sqft_per_job : numeric or Series
+
+    Returns
+    -------
+
+    """
+
+    absorption = absorption.to_frame()
+    building_columns = ['residential_units',
+                        'non_residential_sqft']
+
+    buildings = buildings.to_frame(building_columns)
+    buildings['sqft_per_job'] = sqft_per_job
+
+    for use in ['residential', 'non_residential']:
+
+        residential = True if use == 'residential' else False
+        agents = households if use == 'residential' else jobs
+        new_agents = new_households if use == 'residential' else new_jobs
+
+        if use == 'residential':
+            submarket = buildings.loc[buildings.residential_units > 0]
+        else:
+            submarket = buildings.loc[buildings.non_residential_sqft > 0]
+
+        supply = annual_vacancy(agents, submarket, residential=residential)
+        demand = len(new_agents)
+        absorption.loc[year, use] = supply / demand
+
+    orca.add_table('absorption', absorption)
+    return absorption
+
+
+def simple_absorption(year, absorption, buildings,
+                      households, new_households,
+                      jobs, new_jobs, sqft_per_job):
+
+    absorption = absorption.to_frame()
+
+    # residential
+
+    regional_units = (buildings
+                      .to_frame(['residential_units'])
+                      .residential_units
+                      .sum())
+    vacant_units = regional_units - len(households)
+    res_absorption = vacant_units / len(new_households)
+
+    absorption_log = ('Number of units: {}\n'
+                      'Households: {}\n'
+                      'Vacant units: {}\n'
+                      'New households: {}\n'
+                      'Residential absorption: {:.2f} years')
+
+    print(absorption_log.format(regional_units, len(households), vacant_units,
+                                len(new_households), res_absorption))
+
+    absorption.loc[year, 'residential'] = res_absorption
+
+    # non-residential
+
+    regional_spaces = ((buildings
+                        .to_frame(['non_residential_sqft'])
+                        .non_residential_sqft
+                        .sum())
+                       / sqft_per_job)
+    vacant_spaces = regional_spaces - len(jobs)
+    non_res_absorption = vacant_spaces / len(new_jobs)
+
+    absorption_log = ('Number of spaces: {}\n'
+                      'Jobs: {}\n'
+                      'Vacant spaces: {}\n'
+                      'New jobs: {}\n'
+                      'Non-residential absorption: {:.2f} years')
+
+    print(absorption_log.format(regional_spaces, len(jobs), vacant_spaces,
+                                len(new_households), non_res_absorption))
+
+    absorption.loc[year, 'residential'] = res_absorption
+    absorption.loc[year, 'non-residential'] = non_res_absorption
+
+    return absorption
 
 
 def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
