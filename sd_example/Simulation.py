@@ -19,6 +19,7 @@ orca.run(["scheduled_development_events",
           "households_relocation",
           "hlcm_simulate",  # demand/location models
           "price_vars",
+          "regional_absorption",
           "feasibility",  # supply/proforma models
           "residential_developer",
           "non_residential_developer",

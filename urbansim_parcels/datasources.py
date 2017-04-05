@@ -105,6 +105,11 @@ def nodes():
     return pd.DataFrame()
 
 
+@orca.table('absorption', cache=True)
+def absorption():
+    return pd.DataFrame()
+
+
 # this specifies the relationships between tables
 orca.broadcast('nodes', 'buildings', cast_index=True, onto_on='node_id')
 orca.broadcast('nodes', 'parcels', cast_index=True, onto_on='node_id')
