@@ -137,9 +137,7 @@ def price_vars(net):
 @orca.step('regional_absorption')
 def regional_absorption(year, absorption, buildings,
                         households, jobs, new_households, new_jobs):
-    # absorption = utils.run_absorption(year, absorption, buildings,
-    #                                   households, new_households,
-    #                                   jobs, new_jobs, 400)
+
     absorption = utils.simple_absorption(year, absorption, buildings,
                                          households, new_households,
                                          jobs, new_jobs, 400.0)

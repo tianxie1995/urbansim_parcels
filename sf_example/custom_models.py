@@ -59,6 +59,17 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
     summary.add_zone_output(zones, "diagnostic_outputs", year)
 
 
+@orca.step('regional_absorption')
+def regional_absorption(year, absorption, buildings,
+                        households, jobs, new_households, new_jobs):
+
+    absorption = utils.simple_absorption(year, absorption, buildings,
+                                         households, new_households,
+                                         jobs, new_jobs,
+                                         buildings.sqft_per_job)
+    print(absorption)
+
+
 @orca.step('residential_developer')
 def residential_developer(feasibility, households, buildings, parcels, year,
                           summary, form_to_btype_func, add_extra_columns_func):
