@@ -695,11 +695,13 @@ def simple_absorption(year, absorption, buildings,
                       jobs, new_jobs, sqft_per_job):
 
     absorption = absorption.to_frame()
+    buildings = buildings.to_frame(['residential_units',
+                                    'non_residential_sqft'])
+    buildings['sqft_per_job'] = sqft_per_job
 
     # residential
 
     regional_units = (buildings
-                      .to_frame(['residential_units'])
                       .residential_units
                       .sum())
     vacant_units = regional_units - len(households)
@@ -717,12 +719,9 @@ def simple_absorption(year, absorption, buildings,
     absorption.loc[year, 'residential'] = res_absorption
 
     # non-residential
-
-    regional_spaces = ((buildings
-                        .to_frame(['non_residential_sqft'])
-                        .non_residential_sqft
-                        .sum())
-                       / sqft_per_job)
+    job_spaces = (buildings.non_residential_sqft
+                  / sqft_per_job)
+    regional_spaces = job_spaces.sum()
     vacant_spaces = regional_spaces - len(jobs)
     non_res_absorption = vacant_spaces / len(new_jobs)
 
