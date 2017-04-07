@@ -14,7 +14,6 @@ from urbansim.models import transition
 from urbansim.models.supplydemand import supply_and_demand
 from developer import sqftproforma
 from developer import develop
-from developer import research
 from urbansim.utils import misc
 
 
@@ -359,10 +358,10 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
 
     additional_columns = [supply_fname, vacant_fname]
     if (enable_supply_correction is not None
-            and "submarket_col" in enable_supply_correction):
+        and "submarket_col" in enable_supply_correction):
         additional_columns += [enable_supply_correction["submarket_col"]]
     if (enable_supply_correction is not None
-            and "price_col" in enable_supply_correction):
+        and "price_col" in enable_supply_correction):
         additional_columns += [enable_supply_correction["price_col"]]
     locations_df = to_frame(buildings, join_tbls, cfg,
                             additional_columns=additional_columns)
@@ -610,7 +609,7 @@ def _print_number_unplaced(df, fieldname):
         df[fieldname].value_counts().get(-1, 0)))
 
 
-def annual_vacancy(agents, buildings, residential):
+def average_occupancy(agents, buildings, residential):
     """
     
     Parameters
@@ -627,23 +626,23 @@ def annual_vacancy(agents, buildings, residential):
     agents_per_building = agents.building_id.value_counts()
 
     if residential:
-        vacancies = (buildings.residential_units
-                     - agents_per_building)
+        occupancy = (agents_per_building
+                     / buildings.residential_units)
     else:
         job_sqft_per_building = (agents_per_building
                                  * buildings.sqft_per_job)
-        vacancies = (buildings.non_residential_sqft
-                     - job_sqft_per_building)
-        # return to units of job spaces
-        vacancies /= buildings.sqft_per_job
+        occupancy = (job_sqft_per_building
+                     / buildings.non_residential_sqft)
 
-    return vacancies.sum()
+    occupancy = occupancy.clip(upper=1.0)
+
+    return occupancy.mean()
 
 
-def run_absorption(year, absorption, buildings,
-                   households, new_households,
-                   jobs, new_jobs,
-                   sqft_per_job):
+def run_occupancy(year, occupancy, buildings,
+                  households, new_households,
+                  jobs, new_jobs,
+                  sqft_per_job, years_previous):
     """
     Register a DataFrame indexed by year, with uses as columns. Values are
     number of years to absorb existing inventory given yearly demand. 
@@ -651,49 +650,53 @@ def run_absorption(year, absorption, buildings,
     Parameters
     ----------
     year
-    absorption
+    occupancy
     buildings
     households
     new_households
     jobs
     new_jobs
     sqft_per_job : numeric or Series
+    years_previous : int
 
     Returns
     -------
 
     """
 
-    absorption = absorption.to_frame()
+    occupancy = occupancy.to_frame()
     building_columns = ['residential_units',
-                        'non_residential_sqft']
+                        'non_residential_sqft',
+                        'year_built']
 
     buildings = buildings.to_frame(building_columns)
     buildings['sqft_per_job'] = sqft_per_job
+
+    starting_year = year - years_previous
+    buildings = buildings.loc[buildings.year_built >= starting_year]
 
     for use in ['residential', 'non_residential']:
 
         residential = True if use == 'residential' else False
         agents = households if use == 'residential' else jobs
-        new_agents = new_households if use == 'residential' else new_jobs
+        # new_agents = new_households if use == 'residential' else new_jobs
 
         if use == 'residential':
             submarket = buildings.loc[buildings.residential_units > 0]
         else:
             submarket = buildings.loc[buildings.non_residential_sqft > 0]
 
-        supply = annual_vacancy(agents, submarket, residential=residential)
-        demand = len(new_agents)
-        absorption.loc[year, use] = supply / demand
+        occ = average_occupancy(agents, submarket, residential=residential)
+        # demand = len(new_agents)
+        occupancy.loc[year, use] = occ
 
-    orca.add_table('absorption', absorption)
-    return absorption
+    orca.add_table('occupancy', occupancy)
+    return occupancy
 
 
 def simple_absorption(year, absorption, buildings,
                       households, new_households,
                       jobs, new_jobs, sqft_per_job):
-
     absorption = absorption.to_frame()
     buildings = buildings.to_frame(['residential_units',
                                     'non_residential_sqft'])
@@ -735,12 +738,13 @@ def simple_absorption(year, absorption, buildings,
                                 len(new_households), non_res_absorption))
 
     absorption.loc[year, 'residential'] = res_absorption
-    absorption.loc[year, 'non-residential'] = non_res_absorption
+    absorption.loc[year, 'non_residential'] = non_res_absorption
 
     return absorption
 
 
-def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
+def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf,
+                                    start_year=None):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -771,6 +775,44 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
     # convert from cost to yearly rent
     if pf.residential_to_yearly and 'residential' in df.columns:
         df["residential"] *= pf.cap_rate
+
+    df = occupancy_regional(df, pf, start_year)
+
+    return df
+
+
+def occupancy_regional(df, pf, start_year=None):
+    """
+    Add expected occupancy characteristics to DataFrame that gets passed to 
+    pro forma model
+    
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame of parcels
+    pf : SqFtProForma object
+        Pro forma object with relevant configurations
+
+    Returns
+    -------
+    DataFrame of parcels
+    """
+
+    year = orca.get_injectable('year')
+    occupancy = orca.get_table('occupancy').to_frame()
+
+    go = False if year < start_year or start_year is None else True
+
+    if go:
+        for use in pf.uses:
+            colname = 'occ_{}'.format(use)
+
+            if use == 'residential':
+                value = occupancy.loc[year, 'residential']
+            else:
+                value = occupancy.loc[year, 'non_residential']
+
+            df[colname] = value
 
     return df
 
@@ -813,7 +855,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
 
 
 def run_feasibility(parcels, parcel_price_callback,
-                    parcel_use_allowed_callback, cfg=None):
+                    parcel_use_allowed_callback, start_year=None, cfg=None):
     """
     Execute development feasibility on all parcels
 
@@ -839,7 +881,8 @@ def run_feasibility(parcels, parcel_price_callback,
     cfg = misc.config(cfg)
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
           else sqftproforma.SqFtProForma.from_defaults())
-    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf)
+    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf,
+                                         start_year)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
     orca.add_table('feasibility', feasibility)
 
@@ -1083,11 +1126,13 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     """
     cfg = misc.config(cfg)
 
-    target_units = (
-        num_units_to_build or
-        compute_units_to_build(len(agents),
-                               buildings[supply_fname].sum(),
-                               target_vacancy))
+    # target_units = (
+    #     num_units_to_build or
+    #     compute_units_to_build(len(agents),
+    #                            buildings[supply_fname].sum(),
+    #                            target_vacancy))
+
+    target_units = None
 
     dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
                                       target_units, parcel_size,

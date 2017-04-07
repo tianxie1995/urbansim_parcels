@@ -59,15 +59,14 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
     summary.add_zone_output(zones, "diagnostic_outputs", year)
 
 
-@orca.step('regional_absorption')
-def regional_absorption(year, absorption, buildings,
+@orca.step('regional_occupancy')
+def regional_occupancy(year, occupancy, buildings,
                         households, jobs, new_households, new_jobs):
-
-    absorption = utils.simple_absorption(year, absorption, buildings,
+    occupancy = utils.run_occupancy(year, occupancy, buildings,
                                          households, new_households,
                                          jobs, new_jobs,
-                                         buildings.sqft_per_job)
-    print(absorption)
+                                         buildings.sqft_per_job, 20)
+    print(occupancy)
 
 
 @orca.step('residential_developer')

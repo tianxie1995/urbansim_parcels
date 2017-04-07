@@ -134,14 +134,14 @@ def price_vars(net):
     orca.add_table("nodes", nodes)
 
 
-@orca.step('regional_absorption')
-def regional_absorption(year, absorption, buildings,
+@orca.step('regional_occupancy')
+def regional_occupancy(year, occupancy, buildings,
                         households, jobs, new_households, new_jobs):
 
-    absorption = utils.simple_absorption(year, absorption, buildings,
+    occupancy = utils.run_occupancy(year, occupancy, buildings,
                                          households, new_households,
-                                         jobs, new_jobs, 400.0)
-    print(absorption)
+                                         jobs, new_jobs, 400.0, 20)
+    print(occupancy)
 
 
 @orca.step('feasibility')

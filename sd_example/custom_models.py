@@ -87,6 +87,19 @@ def rsh_simulate(buildings, aggregations):
                                   "res_price_per_sqft")
 
 
+@orca.step('regional_occupancy')
+def regional_occupancy(year, occupancy, buildings,
+                       households, jobs, new_households, new_jobs):
+    b = buildings.to_frame(['job_spaces', 'non_residential_sqft'])
+    b['sqft_per_job'] = b.non_residential_sqft / b.job_spaces
+
+    occupancy_results = utils.run_occupancy(year, occupancy, buildings,
+                                            households, new_households,
+                                            jobs, new_jobs,
+                                            b.sqft_per_job, 20)
+    print(occupancy_results)
+
+
 @orca.step('residential_developer')
 def residential_developer(feasibility, households, buildings, parcels, year,
                           summary, form_to_btype_func, add_extra_columns_func):
