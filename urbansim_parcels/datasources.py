@@ -105,8 +105,8 @@ def nodes():
     return pd.DataFrame()
 
 
-@orca.table('absorption', cache=True)
-def absorption():
+@orca.table('occupancy', cache=True)
+def occupancy():
     return pd.DataFrame()
 
 

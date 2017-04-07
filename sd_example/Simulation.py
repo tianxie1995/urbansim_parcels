@@ -5,7 +5,7 @@ from sd_example import custom_models
 
 
 first_year = 2013
-last_year = 2013
+last_year = 2020
 orca.run(["build_networks"])  # initialize network accessibility engine
 orca.run(["scheduled_development_events",
           "neighborhood_vars",  # accessibility variables
@@ -19,7 +19,7 @@ orca.run(["scheduled_development_events",
           "households_relocation",
           "hlcm_simulate",  # demand/location models
           "price_vars",
-          "regional_absorption",
+          "regional_occupancy",
           "feasibility",  # supply/proforma models
           "residential_developer",
           "non_residential_developer",
