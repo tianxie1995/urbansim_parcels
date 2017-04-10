@@ -147,9 +147,11 @@ def regional_occupancy(year, occupancy, buildings,
 @orca.step('feasibility')
 def feasibility(parcels,
                 parcel_sales_price_sqft_func,
+                parcel_occupancy_func,
                 parcel_is_allowed_func):
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
+                          parcel_occupancy_func,
                           parcel_is_allowed_func,
                           cfg='proforma.yaml')
 
