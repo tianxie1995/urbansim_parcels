@@ -743,7 +743,8 @@ def simple_absorption(year, absorption, buildings,
     return absorption
 
 
-def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf,
+def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
+                                    parcel_occupancy_callback, pf,
                                     start_year=None):
     """
     Prepare parcel DataFrame for feasibility analysis
@@ -768,53 +769,57 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf,
     if pf.parcel_filter:
         df = df.query(pf.parcel_filter)
 
-    # add prices for each use
+    # add prices and occupancies for each use
     for use in pf.uses:
         df[use] = parcel_price_callback(use)
+        if orca.get_injectable('year') >= start_year:
+            df['occ_'.format(use)] = parcel_occupancy_callback(use)
 
     # convert from cost to yearly rent
     if pf.residential_to_yearly and 'residential' in df.columns:
         df["residential"] *= pf.cap_rate
 
-    df = occupancy_regional(df, pf, start_year)
+    # df = occupancy_regional(df, pf, start_year)
 
     return df
 
 
-def occupancy_regional(df, pf, start_year=None):
-    """
-    Add expected occupancy characteristics to DataFrame that gets passed to 
-    pro forma model
-    
-    Parameters
-    ----------
-    df : DataFrame
-        DataFrame of parcels
-    pf : SqFtProForma object
-        Pro forma object with relevant configurations
-
-    Returns
-    -------
-    DataFrame of parcels
-    """
-
-    year = orca.get_injectable('year')
-    occupancy = orca.get_table('occupancy').to_frame()
-
-    go = False if year < start_year or start_year is None else True
-
-    if go:
-        for use in pf.uses:
-            colname = 'occ_{}'.format(use)
-
-            if use == 'residential':
-                value = occupancy.loc[year, 'residential']
-            else:
-                value = occupancy.loc[year, 'non_residential']
-
-            df[colname] = value
-
-    return df
+# def occupancy_regional(df, pf, parcels_occupancy_func, start_year=None):
+#     """
+#     Add expected occupancy characteristics to DataFrame that gets passed to
+#     pro forma model
+#
+#     Parameters
+#     ----------
+#     df : DataFrame
+#         DataFrame of parcels
+#     pf : SqFtProForma object
+#         Pro forma object with relevant configurations
+#
+#     Returns
+#     -------
+#     DataFrame of parcels
+#     """
+#
+#     year = orca.get_injectable('year')
+#     occupancy = orca.get_table('occupancy').to_frame()
+#
+#     go = False if year < start_year or start_year is None else True
+#
+#     if go:
+#         for use in pf.uses:
+#
+#
+#             # colname = 'occ_{}'.format(use)
+#             #
+#             # if use == 'residential':
+#             #     value = occupancy.loc[year, 'residential']
+#             # else:
+#             #     value = occupancy.loc[year, 'non_residential']
+#             #
+#             # df[colname] = value
+#
+#     return df
 
 
 def lookup_by_form(df, parcel_use_allowed_callback, pf):
@@ -854,7 +859,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
     return feasibility
 
 
-def run_feasibility(parcels, parcel_price_callback,
+def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
                     parcel_use_allowed_callback, start_year=None, cfg=None):
     """
     Execute development feasibility on all parcels
@@ -881,7 +886,8 @@ def run_feasibility(parcels, parcel_price_callback,
     cfg = misc.config(cfg)
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
           else sqftproforma.SqFtProForma.from_defaults())
-    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf,
+    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
+                                         parcel_occupancy_callback, pf,
                                          start_year)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
     orca.add_table('feasibility', feasibility)

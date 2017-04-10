@@ -623,6 +623,37 @@ def parcel_average_price(use):
                         orca.get_table('parcels').node_id)
 
 
+@orca.injectable('parcel_occupancy_func', autocall=False)
+def parcel_average_occupancy(use):
+
+    households = orca.get_table('households')
+    jobs = orca.get_table('jobs')
+    buildings = orca.get_table('buildings').to_frame()
+
+    buildings['sqft_per_job'] = (buildings.non_residential_sqft
+                                 / buildings.job_spaces)
+
+    residential = True if use == 'residential' else False
+    agents = households.to_frame() if use == 'residential' else jobs.to_frame()
+
+    agents_per_building = agents.building_id.value_counts()
+
+    if residential:
+        buildings['occupancy'] = (agents_per_building
+                                  / buildings.residential_units)
+    else:
+        job_sqft_per_building = (agents_per_building
+                                 * buildings.sqft_per_job)
+        buildings['occupancy'] = (job_sqft_per_building
+                                  / buildings.non_residential_sqft)
+
+    buildings['occupancy'] = buildings['occupancy'].clip(upper=1.0)
+    buildings_to_parcels = buildings.groupby('parcel_id').agg('mean')
+    parcels_to_zones = buildings_to_parcels.groupby('zone_id').agg('mean')
+
+    return parcels_to_zones['occupancy']
+
+
 @orca.column('parcels', 'max_dua', cache=True)
 def max_dua(parcels, zoning):
     sr = misc.reindex(zoning.max_dua, parcels.zoning_id)
