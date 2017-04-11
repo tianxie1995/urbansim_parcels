@@ -648,10 +648,11 @@ def parcel_average_occupancy(use):
                                   / buildings.non_residential_sqft)
 
     buildings['occupancy'] = buildings['occupancy'].clip(upper=1.0)
-    buildings_to_parcels = buildings.groupby('parcel_id').agg('mean')
-    parcels_to_zones = buildings_to_parcels.groupby('zone_id').agg('mean')
+    buildings_to_zones = (buildings[['zone_id', 'occupancy']]
+                          .groupby('zone_id')
+                          .agg('mean'))
 
-    return parcels_to_zones['occupancy']
+    return buildings_to_zones['occupancy']
 
 
 @orca.column('parcels', 'max_dua', cache=True)
