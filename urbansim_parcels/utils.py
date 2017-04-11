@@ -772,7 +772,7 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
     # add prices and occupancies for each use
     for use in pf.uses:
         df[use] = parcel_price_callback(use)
-        if orca.get_injectable('year') >= start_year:
+        if start_year and orca.get_injectable('year') >= start_year:
             df['occ_'.format(use)] = parcel_occupancy_callback(use)
 
     # convert from cost to yearly rent
