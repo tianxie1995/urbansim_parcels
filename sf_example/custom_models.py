@@ -61,11 +61,11 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
 
 @orca.step('regional_occupancy')
 def regional_occupancy(year, occupancy, buildings,
-                        households, jobs, new_households, new_jobs):
+                       households, jobs, new_households, new_jobs):
     occupancy = utils.run_occupancy(year, occupancy, buildings,
-                                         households, new_households,
-                                         jobs, new_jobs,
-                                         buildings.sqft_per_job, 20)
+                                    households, new_households,
+                                    jobs, new_jobs,
+                                    buildings.sqft_per_job, 20)
     print(occupancy)
 
 
