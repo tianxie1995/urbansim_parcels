@@ -78,7 +78,8 @@ def feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_occupancy_func,
                           parcel_is_allowed_func,
-                          start_year=2012,
+                          start_year=2010,
+                          years_back=20,
                           cfg='proforma.yaml')
 
 

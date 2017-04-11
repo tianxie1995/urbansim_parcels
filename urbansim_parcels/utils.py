@@ -745,7 +745,7 @@ def run_occupancy(year, occupancy, buildings,
 
 def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
                                     parcel_occupancy_callback, pf,
-                                    start_year=None):
+                                    start_year=None, years_back=20):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -769,11 +769,17 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
     if pf.parcel_filter:
         df = df.query(pf.parcel_filter)
 
-    # add prices and occupancies for each use
+    current_year = orca.get_injectable('year')
+    oldest_year = current_year - years_back
+
     for use in pf.uses:
+        # Add prices
         df[use] = parcel_price_callback(use)
-        if start_year and orca.get_injectable('year') >= start_year:
-            df['occ_'.format(use)] = parcel_occupancy_callback(use)
+
+        # Add occupancies
+        if start_year and current_year >= start_year:
+            occ_col = 'occ_{}'.format(use)
+            df[occ_col] = parcel_occupancy_callback(use, oldest_year)
 
     # convert from cost to yearly rent
     if pf.residential_to_yearly and 'residential' in df.columns:
@@ -860,7 +866,8 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
 
 
 def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
-                    parcel_use_allowed_callback, start_year=None, cfg=None):
+                    parcel_use_allowed_callback, start_year=None,
+                    years_back=20, cfg=None):
     """
     Execute development feasibility on all parcels
 
@@ -871,10 +878,18 @@ def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
     parcel_price_callback : function
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
+    parcel_occupancy_callback : function
+        A callback which takes each use of the pro forma, along with a start
+        year, and returns series with index as parcel_id and value as
+        expected occupancy
     parcel_use_allowed_callback : function
         A callback which takes each form of the pro forma and returns a series
         with index as parcel_id and value and boolean whether the form
         is allowed on the parcel
+    start_year : int
+        Year to start tracking occupancy
+    years_back : int
+        Number of years back to track occupancy for
     cfg : str
         The name of the yaml file to read pro forma configurations from
 
@@ -888,7 +903,7 @@ def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
           else sqftproforma.SqFtProForma.from_defaults())
     df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
                                          parcel_occupancy_callback, pf,
-                                         start_year)
+                                         start_year, years_back)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
     orca.add_table('feasibility', feasibility)
 

@@ -5,7 +5,7 @@ from sd_example import custom_models
 
 
 first_year = 2013
-last_year = 2020
+last_year = 2018
 orca.run(["build_networks"])  # initialize network accessibility engine
 orca.run(["scheduled_development_events",
           "neighborhood_vars",  # accessibility variables
