@@ -46,7 +46,9 @@ def parcel_average_occupancy(use):
     buildings = orca.get_table('buildings')
 
     residential = True if use == 'residential' else False
-    agents = households.to_frame() if use == 'residential' else jobs.to_frame()
+    agents = (households.to_frame(columns=['building_id'])
+              if use == 'residential'
+              else jobs.to_frame(columns=['building_id']))
 
     agents_per_building = agents.building_id.value_counts()
 
