@@ -358,10 +358,10 @@ def lcm_simulate(cfg, choosers, buildings, join_tbls, out_fname,
 
     additional_columns = [supply_fname, vacant_fname]
     if (enable_supply_correction is not None
-        and "submarket_col" in enable_supply_correction):
+            and "submarket_col" in enable_supply_correction):
         additional_columns += [enable_supply_correction["submarket_col"]]
     if (enable_supply_correction is not None
-        and "price_col" in enable_supply_correction):
+            and "price_col" in enable_supply_correction):
         additional_columns += [enable_supply_correction["price_col"]]
     locations_df = to_frame(buildings, join_tbls, cfg,
                             additional_columns=additional_columns)
@@ -612,7 +612,6 @@ def _print_number_unplaced(df, fieldname):
 # INFORMATIONAL OCCUPANCY TABLE
 def average_occupancy(agents, buildings, residential):
     """
-    
     Parameters
     ----------
     agents
@@ -646,8 +645,8 @@ def run_occupancy(year, occupancy, buildings,
                   sqft_per_job, years_previous):
     """
     Register a DataFrame indexed by year, with uses as columns. Values are
-    number of years to absorb existing inventory given yearly demand. 
-    
+    number of years to absorb existing inventory given yearly demand.
+
     Parameters
     ----------
     year
@@ -716,8 +715,9 @@ def run_occupancy(year, occupancy, buildings,
 #                       'New households: {}\n'
 #                       'Residential absorption: {:.2f} years')
 #
-#     print(absorption_log.format(regional_units, len(households), vacant_units,
-#                                 len(new_households), res_absorption))
+#     print(absorption_log.format(regional_units, len(households),
+#                                 vacant_units, len(new_households),
+#                                 res_absorption))
 #
 #     absorption.loc[year, 'residential'] = res_absorption
 #
