@@ -116,9 +116,7 @@ def residential_developer(feasibility, households, buildings, parcels, year,
         year=year,
         target_vacancy=.10,
         form_to_btype_callback=form_to_btype_func,
-        add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None)
+        add_more_columns_callback=add_extra_columns_func)
 
     summary.add_parcel_output(new_buildings)
 
@@ -140,9 +138,52 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
         year=year,
         target_vacancy=.21,
         form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func)
+
+    summary.add_parcel_output(new_buildings)
+
+
+@orca.step('residential_developer_profit')
+def residential_developer(feasibility, households, buildings, parcels, year,
+                          summary, form_to_btype_func, add_extra_columns_func):
+    new_buildings = utils.run_developer(
+        "residential",
+        households,
+        buildings,
+        'residential_units',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_residential_units,
+        'res_developer.yaml',
+        year=year,
+        target_vacancy=.10,
+        form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None)
+        min_profit_per_sqft=20)
+
+    summary.add_parcel_output(new_buildings)
+
+
+@orca.step('non_residential_developer_profit')
+def non_residential_developer(feasibility, jobs, buildings, parcels, year,
+                              summary, form_to_btype_func,
+                              add_extra_columns_func):
+    new_buildings = utils.run_developer(
+        ["office", "retail", "industrial"],
+        jobs,
+        buildings,
+        'job_spaces',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_job_spaces,
+        'nonres_developer.yaml',
+        year=year,
+        target_vacancy=.21,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        min_profit_per_sqft=10)
 
     summary.add_parcel_output(new_buildings)
 
