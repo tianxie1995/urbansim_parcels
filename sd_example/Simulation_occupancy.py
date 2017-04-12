@@ -6,7 +6,7 @@ from sd_example import custom_models
 
 start_year = 2013
 orca.add_injectable('start_year', start_year)
-last_year = 2018
+last_year = 2015
 
 
 orca.run(["build_networks"])  # initialize network accessibility engine

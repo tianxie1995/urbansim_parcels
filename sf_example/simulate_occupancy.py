@@ -8,7 +8,7 @@ import orca
 
 start_year = 2010
 orca.add_injectable('start_year', start_year)
-end_year = 2014
+end_year = 2012
 
 orca.run([
     "rsh_simulate",  # residential sales hedonic
