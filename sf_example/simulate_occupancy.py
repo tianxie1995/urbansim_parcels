@@ -6,6 +6,10 @@ import pandas as pd
 import orca
 
 
+start_year = 2010
+orca.add_injectable('start_year', start_year)
+end_year = 2014
+
 orca.run([
     "rsh_simulate",  # residential sales hedonic
     "nrh_simulate",  # non-residential rent hedonic
@@ -18,7 +22,8 @@ orca.run([
     "elcm_simulate",  # employment location choice
     "simple_jobs_transition",  # jobs transition
 
-    "feasibility",  # compute development feasibility
-    "residential_developer",  # build residential buildings
-    "non_residential_developer",  # build non-residential buildings
-], iter_vars=[2010])
+    "regional_occupancy",
+    "feasibility_with_occupancy",  # compute development feasibility
+    "residential_developer_profit",  # build residential buildings
+    "non_residential_developer_profit",  # build non-residential buildings
+], iter_vars=range(start_year, end_year + 1))

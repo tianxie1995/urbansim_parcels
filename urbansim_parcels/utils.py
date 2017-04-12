@@ -694,7 +694,7 @@ def run_occupancy(year, occupancy, buildings,
 
 
 def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
-                                    parcel_occupancy_callback, pf,
+                                    pf, parcel_occupancy_callback=None,
                                     start_year=None, years_back=20):
     """
     Prepare parcel DataFrame for feasibility analysis
@@ -708,6 +708,14 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
         with index as parcel_id and value as yearly_rent
     pf: SqFtProForma object
         Pro forma object with relevant configurations
+    parcel_occupancy_callback : function
+        A callback which takes each use of the pro forma, along with a start
+        year, and returns series with index as parcel_id and value as
+        expected occupancy
+    start_year : int
+        Year to begin tracking occupancy
+    years_back : int
+        Occupancy will be calculated for buildings built starting in this year
 
     Returns
     -------
@@ -777,8 +785,9 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
     return feasibility
 
 
-def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
-                    parcel_use_allowed_callback, start_year=None,
+def run_feasibility(parcels, parcel_price_callback,
+                    parcel_use_allowed_callback,
+                    parcel_occupancy_callback=None, start_year=None,
                     years_back=20, cfg=None):
     """
     Execute development feasibility on all parcels
@@ -790,14 +799,14 @@ def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
     parcel_price_callback : function
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
-    parcel_occupancy_callback : function
-        A callback which takes each use of the pro forma, along with a start
-        year, and returns series with index as parcel_id and value as
-        expected occupancy
     parcel_use_allowed_callback : function
         A callback which takes each form of the pro forma and returns a series
         with index as parcel_id and value and boolean whether the form
         is allowed on the parcel
+    parcel_occupancy_callback : function
+        A callback which takes each use of the pro forma, along with a start
+        year, and returns series with index as parcel_id and value as
+        expected occupancy
     start_year : int
         Year to start tracking occupancy
     years_back : int
@@ -814,7 +823,7 @@ def run_feasibility(parcels, parcel_price_callback, parcel_occupancy_callback,
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
           else sqftproforma.SqFtProForma.from_defaults())
     df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
-                                         parcel_occupancy_callback, pf,
+                                         pf, parcel_occupancy_callback,
                                          start_year, years_back)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
     orca.add_table('feasibility', feasibility)
@@ -996,7 +1005,8 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   add_more_columns_callback=None,
                   remove_developed_buildings=True,
                   unplace_agents=['households', 'jobs'],
-                  num_units_to_build=None, profit_to_prob_func=None):
+                  num_units_to_build=None, profit_to_prob_func=None,
+                  min_profit_per_sqft=None):
     """
     Run the developer model to pick and build buildings
 
@@ -1051,6 +1061,9 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         compute this.
     profit_to_prob_func: func
         Passed directly to dev.pick
+    min_profit_per_sqft: optional, numeric
+        If passed, developer model will build all buildings that have a profit
+        per square foot larger than this value (subject to other constraints)
 
     Returns
     -------
@@ -1059,13 +1072,14 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     """
     cfg = misc.config(cfg)
 
-    # target_units = (
-    #     num_units_to_build or
-    #     compute_units_to_build(len(agents),
-    #                            buildings[supply_fname].sum(),
-    #                            target_vacancy))
-
-    target_units = None
+    if min_profit_per_sqft:
+        target_units = None
+    else:
+        target_units = (
+            num_units_to_build or
+            compute_units_to_build(len(agents),
+                                   buildings[supply_fname].sum(),
+                                   target_vacancy))
 
     dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
                                       target_units, parcel_size,
@@ -1075,7 +1089,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     print("{:,} feasible buildings before running developer".format(
         len(dev.feasibility)))
 
-    new_buildings = dev.pick(profit_to_prob_func)
+    new_buildings = dev.pick(profit_to_prob_func, min_profit_per_sqft)
     orca.add_table("feasibility", dev.feasibility)
 
     if new_buildings is None:
