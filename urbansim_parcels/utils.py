@@ -693,56 +693,6 @@ def run_occupancy(year, occupancy, buildings,
     return occupancy
 
 
-# def simple_absorption(year, absorption, buildings,
-#                       households, new_households,
-#                       jobs, new_jobs, sqft_per_job):
-#     absorption = absorption.to_frame()
-#     buildings = buildings.to_frame(['residential_units',
-#                                     'non_residential_sqft'])
-#     buildings['sqft_per_job'] = sqft_per_job
-#
-#     # residential
-#
-#     regional_units = (buildings
-#                       .residential_units
-#                       .sum())
-#     vacant_units = regional_units - len(households)
-#     res_absorption = vacant_units / len(new_households)
-#
-#     absorption_log = ('Number of units: {}\n'
-#                       'Households: {}\n'
-#                       'Vacant units: {}\n'
-#                       'New households: {}\n'
-#                       'Residential absorption: {:.2f} years')
-#
-#     print(absorption_log.format(regional_units, len(households),
-#                                 vacant_units, len(new_households),
-#                                 res_absorption))
-#
-#     absorption.loc[year, 'residential'] = res_absorption
-#
-#     # non-residential
-#     job_spaces = (buildings.non_residential_sqft
-#                   / sqft_per_job)
-#     regional_spaces = job_spaces.sum()
-#     vacant_spaces = regional_spaces - len(jobs)
-#     non_res_absorption = vacant_spaces / len(new_jobs)
-#
-#     absorption_log = ('Number of spaces: {}\n'
-#                       'Jobs: {}\n'
-#                       'Vacant spaces: {}\n'
-#                       'New jobs: {}\n'
-#                       'Non-residential absorption: {:.2f} years')
-#
-#     print(absorption_log.format(regional_spaces, len(jobs), vacant_spaces,
-#                                 len(new_households), non_res_absorption))
-#
-#     absorption.loc[year, 'residential'] = res_absorption
-#     absorption.loc[year, 'non_residential'] = non_res_absorption
-#
-#     return absorption
-
-
 def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
                                     parcel_occupancy_callback, pf,
                                     start_year=None, years_back=20):
@@ -788,44 +738,6 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
     # df = occupancy_regional(df, pf, start_year)
 
     return df
-
-
-# def occupancy_regional(df, pf, parcels_occupancy_func, start_year=None):
-#     """
-#     Add expected occupancy characteristics to DataFrame that gets passed to
-#     pro forma model
-#
-#     Parameters
-#     ----------
-#     df : DataFrame
-#         DataFrame of parcels
-#     pf : SqFtProForma object
-#         Pro forma object with relevant configurations
-#
-#     Returns
-#     -------
-#     DataFrame of parcels
-#     """
-#
-#     year = orca.get_injectable('year')
-#     occupancy = orca.get_table('occupancy').to_frame()
-#
-#     go = False if year < start_year or start_year is None else True
-#
-#     if go:
-#         for use in pf.uses:
-#
-#
-#             # colname = 'occ_{}'.format(use)
-#             #
-#             # if use == 'residential':
-#             #     value = occupancy.loc[year, 'residential']
-#             # else:
-#             #     value = occupancy.loc[year, 'non_residential']
-#             #
-#             # df[colname] = value
-#
-#     return df
 
 
 def lookup_by_form(df, parcel_use_allowed_callback, pf):
