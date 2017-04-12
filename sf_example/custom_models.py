@@ -162,4 +162,3 @@ def non_residential_developer_profit(feasibility, jobs, buildings,
         min_profit_per_sqft=20.0)
 
     summary.add_parcel_output(new_buildings)
-
