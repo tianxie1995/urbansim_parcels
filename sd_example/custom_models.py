@@ -160,7 +160,8 @@ def residential_developer(feasibility, households, buildings, parcels, year,
         target_vacancy=.10,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        min_profit_per_sqft=20)
+        min_profit_per_sqft=20
+    )
 
     summary.add_parcel_output(new_buildings)
 

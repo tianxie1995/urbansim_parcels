@@ -5,6 +5,7 @@ import os
 import orca
 import pandana as pdna
 import pandas as pd
+import numpy as np
 from urbansim.utils import misc
 from urbansim.utils import networks
 
@@ -154,6 +155,31 @@ def feasibility(parcels,
                           cfg='proforma.yaml')
 
 
+def modify_df_occupancy(self, form, df):
+    """
+    Passed to modify_df parameter of Developer.pick().
+
+    Requires df to have a set of columns, one for each of the uses passed in 
+    the configuration, where values are proportion of new development that 
+    would be expected to be occupied, and names have "occ_" prefix with use.
+    Typical names would be "occ_residential", "occ_retail", etc.
+    """
+
+    occupancies = ['occ_{}'.format(use) for use in self.uses]
+    if set(occupancies).issubset(set(df.columns.tolist())):
+        df['weighted_occupancy'] = np.dot(
+            df[occupancies],
+            self.forms[form])
+    else:
+        df['weighted_occupancy'] = 1.0
+
+    return df
+
+
+def modify_revenues_occupancy(self, form, df, revenues):
+    return revenues * df.weighted_occupancy.values
+
+
 @orca.step('feasibility_with_occupancy')
 def feasibility_with_occupancy(parcels,
                                parcel_sales_price_sqft_func,
@@ -165,7 +191,9 @@ def feasibility_with_occupancy(parcels,
                           parcel_occupancy_func,
                           start_year=orca.get_injectable('start_year'),
                           years_back=20,
-                          cfg='proforma.yaml')
+                          cfg='proforma.yaml',
+                          modify_df=modify_df_occupancy,
+                          modify_revenues=modify_revenues_occupancy)
 
 
 @orca.injectable("add_extra_columns_func", autocall=False)

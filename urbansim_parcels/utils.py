@@ -748,7 +748,7 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
     return df
 
 
-def lookup_by_form(df, parcel_use_allowed_callback, pf):
+def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -776,7 +776,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
 
         newdf = df[allowed]
 
-        lookup_results[form] = pf.lookup(form, newdf)
+        lookup_results[form] = pf.lookup(form, newdf, **kwargs)
 
     feasibility = pd.concat(lookup_results.values(),
                             keys=lookup_results.keys(),
@@ -788,7 +788,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
 def run_feasibility(parcels, parcel_price_callback,
                     parcel_use_allowed_callback,
                     parcel_occupancy_callback=None, start_year=None,
-                    years_back=20, cfg=None):
+                    years_back=20, cfg=None, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -825,7 +825,7 @@ def run_feasibility(parcels, parcel_price_callback,
     df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
                                          pf, parcel_occupancy_callback,
                                          start_year, years_back)
-    feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
+    feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs)
     orca.add_table('feasibility', feasibility)
 
 
