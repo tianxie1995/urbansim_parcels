@@ -159,8 +159,8 @@ def modify_df_occupancy(self, form, df):
     """
     Passed to modify_df parameter of Developer.pick().
 
-    Requires df to have a set of columns, one for each of the uses passed in 
-    the configuration, where values are proportion of new development that 
+    Requires df to have a set of columns, one for each of the uses passed in
+    the configuration, where values are proportion of new development that
     would be expected to be occupied, and names have "occ_" prefix with use.
     Typical names would be "occ_residential", "occ_retail", etc.
     """
