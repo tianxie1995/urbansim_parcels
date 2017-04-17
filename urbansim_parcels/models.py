@@ -157,7 +157,7 @@ def feasibility(parcels,
 
 def modify_df_occupancy(self, form, df):
     """
-    Passed to modify_df parameter of Developer.pick().
+    Passed to modify_df parameter of SqftProForma.lookup().
 
     Requires df to have a set of columns, one for each of the uses passed in
     the configuration, where values are proportion of new development that
@@ -177,6 +177,11 @@ def modify_df_occupancy(self, form, df):
 
 
 def modify_revenues_occupancy(self, form, df, revenues):
+    """
+    Passed to modify_revenues parameter of SqftProForma.lookup().
+    Note that the weighted_occupancy column must be transformed into values
+    because revenues is a numpy ndarray.
+    """
     return revenues * df.weighted_occupancy.values
 
 
