@@ -88,6 +88,26 @@ def parcel_average_occupancy(use, oldest_year):
     return parcel_occupancy
 
 
+@orca.injectable('res_selection', autocall=False)
+def res_selection(self, df, p):
+    min_profit_per_sqft = 20
+    print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
+          .format(min_profit_per_sqft))
+    profitable = df.loc[df.max_profit_per_size > min_profit_per_sqft]
+    build_idx = profitable.index.values
+    return build_idx
+
+
+@orca.injectable('nonres_selection', autocall=False)
+def custom_selection_func_min_profit_10(self, df, p):
+    min_profit_per_sqft = 10
+    print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
+          .format(min_profit_per_sqft))
+    profitable = df.loc[df.max_profit_per_size > min_profit_per_sqft]
+    build_idx = profitable.index.values
+    return build_idx
+
+
 #####################
 # BUILDINGS VARIABLES
 #####################

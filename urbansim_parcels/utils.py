@@ -1006,7 +1006,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   remove_developed_buildings=True,
                   unplace_agents=['households', 'jobs'],
                   num_units_to_build=None, profit_to_prob_func=None,
-                  min_profit_per_sqft=None):
+                  custom_selection_func=None):
     """
     Run the developer model to pick and build buildings
 
@@ -1061,9 +1061,11 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         compute this.
     profit_to_prob_func: func
         Passed directly to dev.pick
-    min_profit_per_sqft: optional, numeric
-        If passed, developer model will build all buildings that have a profit
-        per square foot larger than this value (subject to other constraints)
+    custom_selection_func: func
+        User passed function that decides how to select buildings for
+        development after probabilities are calculated. Must have
+        parameters (self, df, p) and return a numpy array of buildings to
+        build (i.e. df.index.values)
 
     Returns
     -------
@@ -1072,14 +1074,11 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     """
     cfg = misc.config(cfg)
 
-    if min_profit_per_sqft:
-        target_units = None
-    else:
-        target_units = (
-            num_units_to_build or
-            compute_units_to_build(len(agents),
-                                   buildings[supply_fname].sum(),
-                                   target_vacancy))
+    target_units = (
+        num_units_to_build or
+        compute_units_to_build(len(agents),
+                               buildings[supply_fname].sum(),
+                               target_vacancy))
 
     dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
                                       target_units, parcel_size,
@@ -1089,7 +1088,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     print("{:,} feasible buildings before running developer".format(
         len(dev.feasibility)))
 
-    new_buildings = dev.pick(profit_to_prob_func, min_profit_per_sqft)
+    new_buildings = dev.pick(profit_to_prob_func, custom_selection_func)
     orca.add_table("feasibility", dev.feasibility)
 
     if new_buildings is None:

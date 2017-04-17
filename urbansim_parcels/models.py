@@ -224,9 +224,7 @@ def residential_developer(feasibility, households, buildings, parcels, year,
         'res_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
-        add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None)
+        add_more_columns_callback=add_extra_columns_func)
 
     summary.add_parcel_output(new_buildings)
 
@@ -234,8 +232,8 @@ def residential_developer(feasibility, households, buildings, parcels, year,
 @orca.step('residential_developer_profit')
 def residential_developer_profit(feasibility, households, buildings,
                                  parcels, year, summary,
-                                 form_to_btype_func,
-                                 add_extra_columns_func):
+                                 form_to_btype_func, add_extra_columns_func,
+                                 res_selection):
     new_buildings = utils.run_developer(
         "residential",
         households,
@@ -249,9 +247,7 @@ def residential_developer_profit(feasibility, households, buildings,
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None,
-        min_profit_per_sqft=20.0)
+        custom_selection_func=res_selection)
 
     summary.add_parcel_output(new_buildings)
 
@@ -272,9 +268,7 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
         'nonres_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
-        add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None)
+        add_more_columns_callback=add_extra_columns_func)
 
     summary.add_parcel_output(new_buildings)
 
@@ -283,7 +277,7 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
 def non_residential_developer_profit(feasibility, jobs, buildings,
                                      parcels, year, summary,
                                      form_to_btype_func,
-                                     add_extra_columns_func):
+                                     add_extra_columns_func, nonres_selection):
     new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
         jobs,
@@ -297,9 +291,7 @@ def non_residential_developer_profit(feasibility, jobs, buildings,
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None,
-        min_profit_per_sqft=20.0)
+        custom_selection_func=nonres_selection)
 
     summary.add_parcel_output(new_buildings)
 
