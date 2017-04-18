@@ -93,28 +93,36 @@ def zone_id(zones):
 
 
 @orca.column('zones_prices', 'residential')
-def residential(buildings):
+def residential(buildings, year):
+    price_filter = ((buildings.general_type == "Residential")
+                    & (buildings.year_built >= year - 5))
     return (buildings
-            .residential_sales_price[buildings.general_type == "Residential"]
+            .residential_sales_price[price_filter]
             .groupby(buildings.zone_id).quantile())
 
 
 @orca.column('zones_prices', 'retail')
-def retail(buildings):
-    return (buildings.non_residential_rent[buildings.general_type == "Retail"]
+def retail(buildings, year):
+    price_filter = ((buildings.general_type == "Retail")
+                    & (buildings.year_built >= year - 5))
+    return (buildings
+            .non_residential_rent[price_filter]
             .groupby(buildings.zone_id).quantile())
 
 
 @orca.column('zones_prices', 'office')
-def office(buildings):
-    return (buildings.non_residential_rent[buildings.general_type == "Office"]
+def office(buildings, year):
+    price_filter = ((buildings.general_type == "Office")
+                    & (buildings.year_built >= year - 5))
+    return (buildings.non_residential_rent[price_filter]
             .groupby(buildings.zone_id).quantile())
 
 
 @orca.column('zones_prices', 'industrial')
-def industrial(buildings):
-    return (buildings.non_residential_rent[
-                buildings.general_type == "Industrial"]
+def industrial(buildings, year):
+    price_filter = ((buildings.general_type == "Industrial")
+                    & (buildings.year_built >= year - 5))
+    return (buildings.non_residential_rent[price_filter]
             .groupby(buildings.zone_id).quantile())
 
 
