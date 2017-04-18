@@ -549,6 +549,7 @@ def simple_transition(tbl, rate, location_fname):
 
     df.loc[added, location_fname] = -1
     orca.add_table(tbl.name, df)
+    orca.add_table('new_{}'.format(tbl.name), added)
 
 
 def full_transition(agents, agent_controls, year, settings, location_fname,
@@ -608,7 +609,93 @@ def _print_number_unplaced(df, fieldname):
         df[fieldname].value_counts().get(-1, 0)))
 
 
-def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
+# INFORMATIONAL OCCUPANCY TABLE
+def average_occupancy(agents, buildings, residential):
+    """
+    Parameters
+    ----------
+    agents
+    buildings
+    residential
+
+    Returns
+    -------
+
+    """
+
+    agents_per_building = agents.building_id.value_counts()
+
+    if residential:
+        occupancy = (agents_per_building
+                     / buildings.residential_units)
+    else:
+        job_sqft_per_building = (agents_per_building
+                                 * buildings.sqft_per_job)
+        occupancy = (job_sqft_per_building
+                     / buildings.non_residential_sqft)
+
+    occupancy = occupancy.clip(upper=1.0)
+
+    return occupancy.mean()
+
+
+def run_occupancy(year, occupancy, buildings,
+                  households, new_households,
+                  jobs, new_jobs,
+                  sqft_per_job, years_previous):
+    """
+    Register a DataFrame indexed by year, with uses as columns. Values are
+    number of years to absorb existing inventory given yearly demand.
+
+    Parameters
+    ----------
+    year
+    occupancy
+    buildings
+    households
+    new_households
+    jobs
+    new_jobs
+    sqft_per_job : numeric or Series
+    years_previous : int
+
+    Returns
+    -------
+
+    """
+
+    occupancy = occupancy.to_frame()
+    building_columns = ['residential_units',
+                        'non_residential_sqft',
+                        'year_built']
+
+    buildings = buildings.to_frame(building_columns)
+    buildings['sqft_per_job'] = sqft_per_job
+
+    starting_year = year - years_previous
+    buildings = buildings.loc[buildings.year_built >= starting_year]
+
+    for use in ['residential', 'non_residential']:
+
+        residential = True if use == 'residential' else False
+        agents = households if use == 'residential' else jobs
+        # new_agents = new_households if use == 'residential' else new_jobs
+
+        if use == 'residential':
+            submarket = buildings.loc[buildings.residential_units > 0]
+        else:
+            submarket = buildings.loc[buildings.non_residential_sqft > 0]
+
+        occ = average_occupancy(agents, submarket, residential=residential)
+        occupancy.loc[year, use] = occ
+
+    orca.add_table('occupancy', occupancy)
+    return occupancy
+
+
+def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
+                                    pf, parcel_occupancy_callback=None,
+                                    start_year=None, years_back=20):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -621,6 +708,14 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
         with index as parcel_id and value as yearly_rent
     pf: SqFtProForma object
         Pro forma object with relevant configurations
+    parcel_occupancy_callback : function
+        A callback which takes each use of the pro forma, along with a start
+        year, and returns series with index as parcel_id and value as
+        expected occupancy
+    start_year : int
+        Year to begin tracking occupancy
+    years_back : int
+        Occupancy will be calculated for buildings built starting in this year
 
     Returns
     -------
@@ -632,18 +727,28 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf):
     if pf.parcel_filter:
         df = df.query(pf.parcel_filter)
 
-    # add prices for each use
+    current_year = orca.get_injectable('year')
+    oldest_year = current_year - years_back
+
     for use in pf.uses:
+        # Add prices
         df[use] = parcel_price_callback(use)
+
+        # Add occupancies
+        if start_year and current_year >= start_year:
+            occ_col = 'occ_{}'.format(use)
+            df[occ_col] = parcel_occupancy_callback(use, oldest_year)
 
     # convert from cost to yearly rent
     if pf.residential_to_yearly and 'residential' in df.columns:
         df["residential"] *= pf.cap_rate
 
+    # df = occupancy_regional(df, pf, start_year)
+
     return df
 
 
-def lookup_by_form(df, parcel_use_allowed_callback, pf):
+def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -671,7 +776,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
 
         newdf = df[allowed]
 
-        lookup_results[form] = pf.lookup(form, newdf)
+        lookup_results[form] = pf.lookup(form, newdf, **kwargs)
 
     feasibility = pd.concat(lookup_results.values(),
                             keys=lookup_results.keys(),
@@ -681,7 +786,9 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf):
 
 
 def run_feasibility(parcels, parcel_price_callback,
-                    parcel_use_allowed_callback, cfg=None):
+                    parcel_use_allowed_callback,
+                    parcel_occupancy_callback=None, start_year=None,
+                    years_back=20, cfg=None, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -696,6 +803,14 @@ def run_feasibility(parcels, parcel_price_callback,
         A callback which takes each form of the pro forma and returns a series
         with index as parcel_id and value and boolean whether the form
         is allowed on the parcel
+    parcel_occupancy_callback : function
+        A callback which takes each use of the pro forma, along with a start
+        year, and returns series with index as parcel_id and value as
+        expected occupancy
+    start_year : int
+        Year to start tracking occupancy
+    years_back : int
+        Number of years back to track occupancy for
     cfg : str
         The name of the yaml file to read pro forma configurations from
 
@@ -707,8 +822,10 @@ def run_feasibility(parcels, parcel_price_callback,
     cfg = misc.config(cfg)
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
           else sqftproforma.SqFtProForma.from_defaults())
-    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback, pf)
-    feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf)
+    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
+                                         pf, parcel_occupancy_callback,
+                                         start_year, years_back)
+    feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs)
     orca.add_table('feasibility', feasibility)
 
 
@@ -888,7 +1005,8 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   add_more_columns_callback=None,
                   remove_developed_buildings=True,
                   unplace_agents=['households', 'jobs'],
-                  num_units_to_build=None, profit_to_prob_func=None):
+                  num_units_to_build=None, profit_to_prob_func=None,
+                  custom_selection_func=None):
     """
     Run the developer model to pick and build buildings
 
@@ -943,6 +1061,11 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         compute this.
     profit_to_prob_func: func
         Passed directly to dev.pick
+    custom_selection_func: func
+        User passed function that decides how to select buildings for
+        development after probabilities are calculated. Must have
+        parameters (self, df, p) and return a numpy array of buildings to
+        build (i.e. df.index.values)
 
     Returns
     -------
@@ -965,7 +1088,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     print("{:,} feasible buildings before running developer".format(
         len(dev.feasibility)))
 
-    new_buildings = dev.pick(profit_to_prob_func)
+    new_buildings = dev.pick(profit_to_prob_func, custom_selection_func)
     orca.add_table("feasibility", dev.feasibility)
 
     if new_buildings is None:

@@ -38,6 +38,76 @@ def random_type(row):
     return random.choice(form_to_btype[form])
 
 
+@orca.injectable('parcel_occupancy_func', autocall=False)
+def parcel_average_occupancy(use, oldest_year):
+
+    households = orca.get_table('households')
+    jobs = orca.get_table('jobs')
+    buildings = (orca.get_table('buildings')
+                 .to_frame(['parcel_id', 'residential_units',
+                            'non_residential_sqft', 'sqft_per_job',
+                            'zone_id', 'year_built']))
+    parcels = orca.get_table('parcels').to_frame(['zone_id'])
+
+    buildings = buildings[buildings.year_built >= oldest_year]
+
+    residential = True if use == 'residential' else False
+    agents = (households.to_frame(columns=['building_id'])
+              if use == 'residential'
+              else jobs.to_frame(columns=['building_id']))
+
+    agents_per_building = agents.building_id.value_counts()
+
+    if residential:
+        buildings['occupancy'] = (agents_per_building
+                                  / buildings.residential_units)
+    else:
+        job_sqft_per_building = (agents_per_building
+                                 * buildings.sqft_per_job)
+        buildings['occupancy'] = (job_sqft_per_building
+                                  / buildings.non_residential_sqft)
+
+    buildings['occupancy'] = buildings['occupancy'].clip(upper=1.0)
+
+    # Series of average occupancy indexed by zone
+    occupancy_by_zone = (buildings[['zone_id', 'occupancy']]
+                         .groupby('zone_id')
+                         .agg('mean')
+                         .occupancy)
+
+    # Add series above to buildings table
+    buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
+                                                buildings.zone_id)
+
+    # Group buildings table to parcels
+    parcel_occupancy = (buildings[['zonal_occupancy', 'parcel_id']]
+                        .groupby('parcel_id')
+                        .agg('mean')
+                        .zonal_occupancy)
+
+    return parcel_occupancy
+
+
+@orca.injectable('res_selection', autocall=False)
+def res_selection(self, df, p):
+    min_profit_per_sqft = 20
+    print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
+          .format(min_profit_per_sqft))
+    profitable = df.loc[df.max_profit_per_size > min_profit_per_sqft]
+    build_idx = profitable.index.values
+    return build_idx
+
+
+@orca.injectable('nonres_selection', autocall=False)
+def custom_selection_func_min_profit_10(self, df, p):
+    min_profit_per_sqft = 10
+    print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
+          .format(min_profit_per_sqft))
+    profitable = df.loc[df.max_profit_per_size > min_profit_per_sqft]
+    build_idx = profitable.index.values
+    return build_idx
+
+
 #####################
 # BUILDINGS VARIABLES
 #####################

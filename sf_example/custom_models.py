@@ -59,6 +59,16 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
     summary.add_zone_output(zones, "diagnostic_outputs", year)
 
 
+@orca.step('regional_occupancy')
+def regional_occupancy(year, occupancy, buildings,
+                       households, jobs, new_households, new_jobs):
+    occupancy = utils.run_occupancy(year, occupancy, buildings,
+                                    households, new_households,
+                                    jobs, new_jobs,
+                                    buildings.sqft_per_job, 20)
+    print(occupancy)
+
+
 @orca.step('residential_developer')
 def residential_developer(feasibility, households, buildings, parcels, year,
                           summary, form_to_btype_func, add_extra_columns_func):
@@ -74,9 +84,30 @@ def residential_developer(feasibility, households, buildings, parcels, year,
         'res_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func)
+
+    summary.add_parcel_output(new_buildings)
+
+
+@orca.step('residential_developer_profit')
+def residential_developer_profit(feasibility, households, buildings,
+                                 parcels, year, summary,
+                                 form_to_btype_func,
+                                 add_extra_columns_func, res_selection):
+    new_buildings = utils.run_developer(
+        "residential",
+        households,
+        buildings,
+        'residential_units',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit_placeholder,
+        parcels.total_residential_units,
+        'res_developer.yaml',
+        year=year,
+        form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None)
+        custom_selection_func=res_selection)
 
     summary.add_parcel_output(new_buildings)
 
@@ -97,8 +128,29 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
         'nonres_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func)
+
+    summary.add_parcel_output(new_buildings)
+
+
+@orca.step('non_residential_developer_profit')
+def non_residential_developer_profit(feasibility, jobs, buildings,
+                                     parcels, year, summary,
+                                     form_to_btype_func,
+                                     add_extra_columns_func, nonres_selection):
+    new_buildings = utils.run_developer(
+        ["office", "retail", "industrial"],
+        jobs,
+        buildings,
+        'job_spaces',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit_placeholder,
+        parcels.total_job_spaces,
+        'nonres_developer.yaml',
+        year=year,
+        form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        num_units_to_build=None,
-        profit_to_prob_func=None)
+        custom_selection_func=nonres_selection)
 
     summary.add_parcel_output(new_buildings)

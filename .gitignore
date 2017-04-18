@@ -56,5 +56,8 @@ docs/_build/
 # Intellij
 .idea
 
+# VS code
+.vscode
+
 # Runs
 RUNNUM
