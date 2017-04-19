@@ -10,12 +10,14 @@ import pandas as pd
 import orca
 import pandana as pdna
 from urbansim.models import transition
+from urbansim.utils import networks
 
 from urbansim_parcels import utils
 from urbansim_parcels import variables
 from urbansim_parcels import datasources
 from sd_example import custom_variables
 from sd_example import custom_datasources
+from sd_example import custom_utils
 
 
 @orca.step('build_networks')
@@ -87,17 +89,27 @@ def rsh_simulate(buildings, aggregations):
                                   "res_price_per_sqft")
 
 
-@orca.step('regional_occupancy')
-def regional_occupancy(year, occupancy, buildings,
-                       households, jobs, new_households, new_jobs):
-    b = buildings.to_frame(['job_spaces', 'non_residential_sqft'])
-    b['sqft_per_job'] = b.non_residential_sqft / b.job_spaces
+@orca.step('occupancy_vars')
+def occupancy_vars(year, net):
 
-    occupancy_results = utils.run_occupancy(year, occupancy, buildings,
-                                            households, new_households,
-                                            jobs, new_jobs,
-                                            b.sqft_per_job, 20)
-    print(occupancy_results)
+    oldest_year = year - 20
+    building_occupancy = custom_utils.building_occupancy(oldest_year)
+    orca.add_table('building_occupancy', building_occupancy)
+
+    res_mean = building_occupancy.occupancy_res.mean()
+    print('Average residential occupancy in {} for buildings built'
+          ' since {}: {:.2f}%'.format(year, oldest_year, res_mean * 100))
+
+    nonres_mean = building_occupancy.occupancy_nonres.mean()
+    print('Average non-residential occupancy in {} for buildings built'
+          ' since {}: {:.2f}%'.format(year, oldest_year, nonres_mean * 100))
+
+    nodes2 = networks.from_yaml(net, "occupancy_vars.yaml")
+    nodes2 = nodes2.fillna(0)
+    print(nodes2.describe())
+    nodes = orca.get_table('nodes')
+    nodes = nodes.to_frame().join(nodes2)
+    orca.add_table("nodes", nodes)
 
 
 @orca.step('residential_developer')

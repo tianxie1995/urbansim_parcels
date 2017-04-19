@@ -5,6 +5,7 @@ import numpy as np
 import orca
 import pandas as pd
 from urbansim.utils import misc
+from urbansim.utils import networks
 
 from urbansim_parcels import datasources
 from urbansim_parcels import utils
@@ -39,41 +40,17 @@ def random_type(row):
 
 
 @orca.injectable('parcel_occupancy_func', autocall=False)
-def parcel_average_occupancy(use, oldest_year):
+def parcel_average_occupancy(use):
+    buildings = orca.get_table('building_occupancy').to_frame(
+        ['zone_id', 'parcel_id', 'occupancy_res', 'occupancy_nonres'])
 
-    households = orca.get_table('households')
-    jobs = orca.get_table('jobs')
-    buildings = (orca.get_table('buildings')
-                 .to_frame(['parcel_id', 'residential_units',
-                            'non_residential_sqft', 'sqft_per_job',
-                            'zone_id', 'year_built']))
-    parcels = orca.get_table('parcels').to_frame(['zone_id'])
-
-    buildings = buildings[buildings.year_built >= oldest_year]
-
-    residential = True if use == 'residential' else False
-    agents = (households.to_frame(columns=['building_id'])
-              if use == 'residential'
-              else jobs.to_frame(columns=['building_id']))
-
-    agents_per_building = agents.building_id.value_counts()
-
-    if residential:
-        buildings['occupancy'] = (agents_per_building
-                                  / buildings.residential_units)
-    else:
-        job_sqft_per_building = (agents_per_building
-                                 * buildings.sqft_per_job)
-        buildings['occupancy'] = (job_sqft_per_building
-                                  / buildings.non_residential_sqft)
-
-    buildings['occupancy'] = buildings['occupancy'].clip(upper=1.0)
+    occ_col = 'occupancy_res' if use == 'residential' else 'occupancy_nonres'
 
     # Series of average occupancy indexed by zone
-    occupancy_by_zone = (buildings[['zone_id', 'occupancy']]
+    occupancy_by_zone = (buildings[['zone_id', occ_col]]
                          .groupby('zone_id')
                          .agg('mean')
-                         .occupancy)
+                         [occ_col])
 
     # Add series above to buildings table
     buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
@@ -86,6 +63,38 @@ def parcel_average_occupancy(use, oldest_year):
                         .zonal_occupancy)
 
     return parcel_occupancy
+
+
+@orca.injectable('modify_df_occupancy', autocall=False)
+def modify_df_occupancy(self, form, df):
+    """
+    Passed to modify_df parameter of SqftProForma.lookup().
+
+    Requires df to have a set of columns, one for each of the uses passed in
+    the configuration, where values are proportion of new development that
+    would be expected to be occupied, and names have "occ_" prefix with use.
+    Typical names would be "occ_residential", "occ_retail", etc.
+    """
+
+    occupancies = ['occ_{}'.format(use) for use in self.uses]
+    if set(occupancies).issubset(set(df.columns.tolist())):
+        df['weighted_occupancy'] = np.dot(
+            df[occupancies],
+            self.forms[form])
+    else:
+        df['weighted_occupancy'] = 1.0
+
+    return df
+
+
+@orca.injectable('modify_revenues_occupancy', autocall=False)
+def modify_revenues_occupancy(self, form, df, revenues):
+    """
+    Passed to modify_revenues parameter of SqftProForma.lookup().
+    Note that the weighted_occupancy column must be transformed into values
+    because revenues is a numpy ndarray.
+    """
+    return revenues * df.weighted_occupancy.values
 
 
 @orca.injectable('res_selection', autocall=False)

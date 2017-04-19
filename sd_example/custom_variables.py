@@ -7,6 +7,7 @@ import pandas as pd
 
 import orca
 from urbansim.utils import misc
+from urbansim.utils import networks
 
 from urbansim_parcels import datasources
 from sd_example import custom_datasources
@@ -623,20 +624,22 @@ def parcel_average_price(use):
                         orca.get_table('parcels').node_id)
 
 
-@orca.injectable('parcel_occupancy_func', autocall=False)
-def parcel_average_occupancy(use, oldest_year):
+def building_occupancy(use, oldest_year):
+    households, jobs, buildings = ([orca.get_table(table) for table in
+                                    ['households', 'jobs', 'buildings']])
 
-    households = orca.get_table('households').to_frame()
-    jobs = orca.get_table('jobs').to_frame()
-    buildings = orca.get_table('buildings').to_frame()
-
-    buildings = buildings[buildings.year_built >= oldest_year]
-
+    buildings = (buildings.to_frame()
+                 # Filter for buildings built in oldest_year or later
+                 [buildings.year_built >= oldest_year])
     buildings['sqft_per_job'] = (buildings.non_residential_sqft
                                  / buildings.job_spaces)
 
     residential = True if use == 'residential' else False
-    agents = households if use == 'residential' else jobs
+
+    if residential:
+        agents = households.to_frame(columns=['building_id'])
+    else:
+        agents = jobs.to_frame(columns=['building_id'])
 
     agents_per_building = agents.building_id.value_counts()
 
@@ -651,23 +654,15 @@ def parcel_average_occupancy(use, oldest_year):
 
     buildings['occupancy'] = buildings['occupancy'].clip(upper=1.0)
 
-    # Series of average occupancy indexed by zone
-    occupancy_by_zone = (buildings[['zone_id', 'occupancy']]
-                         .groupby('zone_id')
-                         .agg('mean')
-                         .occupancy)
+    return buildings
 
-    # Add series above to buildings table
-    buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
-                                                buildings.zone_id)
 
-    # Group buildings table to parcels
-    parcel_occupancy = (buildings[['zonal_occupancy', 'parcel_id']]
-                        .groupby('parcel_id')
-                        .agg('mean')
-                        .zonal_occupancy)
-
-    return parcel_occupancy
+@orca.injectable('parcel_occupancy_func', autocall=False)
+def parcel_average_occupancy(use):
+    occ_var = 'occ_{}'.format(use)
+    nodes = orca.get_table('nodes').to_frame([occ_var])
+    return misc.reindex(nodes[occ_var],
+                        orca.get_table('parcels').node_id)
 
 
 @orca.column('parcels', 'max_dua', cache=True)

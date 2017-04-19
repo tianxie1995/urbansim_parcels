@@ -185,3 +185,51 @@ class SimulationSummaryData(object):
         outf = open(self.zone_indicator_file, "w")
         json.dump(self.zone_output, outf)
         outf.close()
+
+
+def building_occupancy(oldest_year=None):
+    """
+    Add "occupancy" column to buildings table using units for residential and
+    square footage for nonresidential uses.
+
+    Parameters
+    ----------
+    oldest_year : int, optional
+        If passed, buildings built before oldest_year will be filtered out
+
+    Returns
+    -------
+    buildings : DataFrame
+    """
+    households, jobs, buildings = ([orca.get_table(table) for table in
+                                    ['households', 'jobs', 'buildings']])
+
+    buildings = (buildings
+                 .to_frame(['parcel_id', 'residential_units',
+                            'non_residential_sqft', 'job_spaces',
+                            'zone_id', 'year_built', 'general_type',
+                            'node_id']))
+
+    buildings = (buildings[buildings.year_built >= oldest_year]
+                 if oldest_year is not None else buildings)
+
+    buildings['sqft_per_job'] = (buildings.non_residential_sqft
+                                 / buildings.job_spaces)
+
+    # Residential
+    households = households.to_frame(columns=['building_id'])
+    agents_per_building = households.building_id.value_counts()
+    buildings['occupancy_res'] = ((agents_per_building
+                                   / buildings.residential_units)
+                                  .clip(upper=1.0))
+
+    # Non-residential
+    jobs = jobs.to_frame(columns=['building_id'])
+    agents_per_building = jobs.building_id.value_counts()
+    job_sqft_per_building = (agents_per_building
+                             * buildings.sqft_per_job)
+    buildings['occupancy_nonres'] = ((job_sqft_per_building
+                                      / buildings.non_residential_sqft)
+                                     .clip(upper=1.0))
+
+    return buildings

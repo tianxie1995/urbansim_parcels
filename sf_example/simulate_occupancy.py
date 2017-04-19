@@ -7,8 +7,9 @@ import orca
 
 
 start_year = 2010
-orca.add_injectable('start_year', start_year)
 end_year = 2012
+
+orca.add_injectable('start_year', start_year)
 
 orca.run([
     "rsh_simulate",  # residential sales hedonic
@@ -22,7 +23,7 @@ orca.run([
     "elcm_simulate",  # employment location choice
     "simple_jobs_transition",  # jobs transition
 
-    "regional_occupancy",
+    "occupancy_vars",  # calculate occupancy by use
     "feasibility_with_occupancy",  # compute development feasibility
     "residential_developer_profit",  # build residential buildings
     "non_residential_developer_profit",  # build non-residential buildings
