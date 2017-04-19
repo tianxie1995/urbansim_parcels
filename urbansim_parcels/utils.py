@@ -700,8 +700,6 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
     if pf.residential_to_yearly and 'residential' in df.columns:
         df["residential"] *= pf.cap_rate
 
-    # df = occupancy_regional(df, pf, start_year)
-
     return df
 
 

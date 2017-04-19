@@ -84,6 +84,8 @@ def modify_df_occupancy(self, form, df):
     else:
         df['weighted_occupancy'] = 1.0
 
+    df = df.loc[df.weighted_occupancy > .50]
+
     return df
 
 
