@@ -158,7 +158,7 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
 @orca.step('residential_developer_profit')
 def residential_developer_profit(feasibility, households, buildings, parcels,
                                  year, summary, form_to_btype_func,
-                                 add_extra_columns_func, res_selection):
+                                 add_extra_columns_func, custom_selection):
     new_buildings = utils.run_developer(
         "residential",
         households,
@@ -173,7 +173,7 @@ def residential_developer_profit(feasibility, households, buildings, parcels,
         target_vacancy=.10,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        custom_selection_func=res_selection
+        custom_selection_func=custom_selection
     )
 
     summary.add_parcel_output(new_buildings)
@@ -182,7 +182,7 @@ def residential_developer_profit(feasibility, households, buildings, parcels,
 @orca.step('non_residential_developer_profit')
 def non_residential_developer_profit(feasibility, jobs, buildings, parcels,
                                      year, summary, form_to_btype_func,
-                                     add_extra_columns_func, nonres_selection):
+                                     add_extra_columns_func, custom_selection):
     new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
         jobs,
@@ -197,7 +197,7 @@ def non_residential_developer_profit(feasibility, jobs, buildings, parcels,
         target_vacancy=.21,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        custom_selection_func=nonres_selection)
+        custom_selection_func=custom_selection)
 
     summary.add_parcel_output(new_buildings)
 

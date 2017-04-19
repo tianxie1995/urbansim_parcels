@@ -108,11 +108,25 @@ def res_selection(self, df, p):
 
 
 @orca.injectable('nonres_selection', autocall=False)
-def custom_selection_func_min_profit_10(self, df, p):
+def nonres_selection(self, df, p):
     min_profit_per_sqft = 10
     print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
           .format(min_profit_per_sqft))
     profitable = df.loc[df.max_profit_per_size > min_profit_per_sqft]
+    build_idx = profitable.index.values
+    return build_idx
+
+
+@orca.injectable('custom_selection', autocall=False)
+def custom_selection(self, df, p):
+    profit_cost_ratio = .10
+    minimum_profit = 100000
+    print("BUILDING ALL BUILDINGS WITH PROFIT TO COST RATIO > {:.0f}%"
+          " AND PROFIT > ${:,}"
+          .format(profit_cost_ratio * 100, minimum_profit))
+    condition = ((df.max_profit / df.total_cost > profit_cost_ratio)
+                 & (df.max_profit > minimum_profit))
+    profitable = df.loc[condition]
     build_idx = profitable.index.values
     return build_idx
 
