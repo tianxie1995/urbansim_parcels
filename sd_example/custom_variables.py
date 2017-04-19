@@ -624,39 +624,6 @@ def parcel_average_price(use):
                         orca.get_table('parcels').node_id)
 
 
-def building_occupancy(use, oldest_year):
-    households, jobs, buildings = ([orca.get_table(table) for table in
-                                    ['households', 'jobs', 'buildings']])
-
-    buildings = (buildings.to_frame()
-                 # Filter for buildings built in oldest_year or later
-                 [buildings.year_built >= oldest_year])
-    buildings['sqft_per_job'] = (buildings.non_residential_sqft
-                                 / buildings.job_spaces)
-
-    residential = True if use == 'residential' else False
-
-    if residential:
-        agents = households.to_frame(columns=['building_id'])
-    else:
-        agents = jobs.to_frame(columns=['building_id'])
-
-    agents_per_building = agents.building_id.value_counts()
-
-    if residential:
-        buildings['occupancy'] = (agents_per_building
-                                  / buildings.residential_units)
-    else:
-        job_sqft_per_building = (agents_per_building
-                                 * buildings.sqft_per_job)
-        buildings['occupancy'] = (job_sqft_per_building
-                                  / buildings.non_residential_sqft)
-
-    buildings['occupancy'] = buildings['occupancy'].clip(upper=1.0)
-
-    return buildings
-
-
 @orca.injectable('parcel_occupancy_func', autocall=False)
 def parcel_average_occupancy(use):
     occ_var = 'occ_{}'.format(use)
