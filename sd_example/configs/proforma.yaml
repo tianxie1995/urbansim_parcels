@@ -137,3 +137,39 @@ forms_to_test:
 pass_through: []
 
 simple_zoning: false
+
+construction_months:
+    industrial:
+    - 12.0
+    - 14.0
+    - 18.0
+    - 24.0
+    office:
+    - 12.0
+    - 14.0
+    - 18.0
+    - 24.0
+    residential:
+    - 12.0
+    - 14.0
+    - 18.0
+    - 24.0
+    retail:
+    - 12.0
+    - 14.0
+    - 18.0
+    - 24.0
+
+construction_sqft_for_months:
+- 10000
+- 20000
+- 50000
+- .inf
+
+loan_to_cost_ratio: 0.7
+
+drawdown_factor: 0.6
+
+interest_rate: 0.05
+
+loan_fees: 0.02
