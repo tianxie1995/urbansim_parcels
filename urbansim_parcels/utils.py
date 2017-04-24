@@ -609,93 +609,53 @@ def _print_number_unplaced(df, fieldname):
         df[fieldname].value_counts().get(-1, 0)))
 
 
-# INFORMATIONAL OCCUPANCY TABLE
-def average_occupancy(agents, buildings, residential):
+def building_occupancy(oldest_year=None):
     """
-    Parameters
-    ----------
-    agents
-    buildings
-    residential
-
-    Returns
-    -------
-
-    """
-
-    agents_per_building = agents.building_id.value_counts()
-
-    if residential:
-        occupancy = (agents_per_building
-                     / buildings.residential_units)
-    else:
-        job_sqft_per_building = (agents_per_building
-                                 * buildings.sqft_per_job)
-        occupancy = (job_sqft_per_building
-                     / buildings.non_residential_sqft)
-
-    occupancy = occupancy.clip(upper=1.0)
-
-    return occupancy.mean()
-
-
-def run_occupancy(year, occupancy, buildings,
-                  households, new_households,
-                  jobs, new_jobs,
-                  sqft_per_job, years_previous):
-    """
-    Register a DataFrame indexed by year, with uses as columns. Values are
-    number of years to absorb existing inventory given yearly demand.
+    Add "occupancy" column to buildings table using units for residential and
+    square footage for nonresidential uses.
 
     Parameters
     ----------
-    year
-    occupancy
-    buildings
-    households
-    new_households
-    jobs
-    new_jobs
-    sqft_per_job : numeric or Series
-    years_previous : int
+    oldest_year : int, optional
+        If passed, buildings built before oldest_year will be filtered out
 
     Returns
     -------
-
+    buildings : DataFrame
     """
+    households, jobs, buildings = ([orca.get_table(table) for table in
+                                    ['households', 'jobs', 'buildings']])
 
-    occupancy = occupancy.to_frame()
-    building_columns = ['residential_units',
-                        'non_residential_sqft',
-                        'year_built']
+    buildings = (buildings
+                 .to_frame(['parcel_id', 'residential_units',
+                            'non_residential_sqft', 'sqft_per_job',
+                            'zone_id', 'year_built']))
 
-    buildings = buildings.to_frame(building_columns)
-    buildings['sqft_per_job'] = sqft_per_job
+    buildings = (buildings[buildings.year_built >= oldest_year]
+                 if oldest_year is not None else buildings)
 
-    starting_year = year - years_previous
-    buildings = buildings.loc[buildings.year_built >= starting_year]
+    # Residential
+    households = households.to_frame(columns=['building_id'])
+    agents_per_building = households.building_id.value_counts()
+    buildings['occupancy_res'] = ((agents_per_building
+                                  / buildings.residential_units)
+                                  .clip(upper=1.0))
 
-    for use in ['residential', 'non_residential']:
+    # Non-residential
+    jobs = jobs.to_frame(columns=['building_id'])
+    agents_per_building = jobs.building_id.value_counts()
+    job_sqft_per_building = (agents_per_building
+                             * buildings.sqft_per_job)
+    buildings['occupancy_nonres'] = ((job_sqft_per_building
+                                      / buildings.non_residential_sqft)
+                                     .clip(upper=1.0))
 
-        residential = True if use == 'residential' else False
-        agents = households if use == 'residential' else jobs
-        # new_agents = new_households if use == 'residential' else new_jobs
-
-        if use == 'residential':
-            submarket = buildings.loc[buildings.residential_units > 0]
-        else:
-            submarket = buildings.loc[buildings.non_residential_sqft > 0]
-
-        occ = average_occupancy(agents, submarket, residential=residential)
-        occupancy.loc[year, use] = occ
-
-    orca.add_table('occupancy', occupancy)
-    return occupancy
+    return buildings
 
 
 def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
                                     pf, parcel_occupancy_callback=None,
-                                    start_year=None, years_back=20):
+                                    start_year=None):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -703,19 +663,17 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
     ----------
     parcels : DataFrame Wrapper
         The data frame wrapper for the parcel data
-    parcel_price_callback : function
+    parcel_price_callback : func
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
     pf: SqFtProForma object
         Pro forma object with relevant configurations
-    parcel_occupancy_callback : function
+    parcel_occupancy_callback : func
         A callback which takes each use of the pro forma, along with a start
         year, and returns series with index as parcel_id and value as
         expected occupancy
     start_year : int
         Year to begin tracking occupancy
-    years_back : int
-        Occupancy will be calculated for buildings built starting in this year
 
     Returns
     -------
@@ -728,7 +686,6 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
         df = df.query(pf.parcel_filter)
 
     current_year = orca.get_injectable('year')
-    oldest_year = current_year - years_back
 
     for use in pf.uses:
         # Add prices
@@ -737,13 +694,11 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
         # Add occupancies
         if start_year and current_year >= start_year:
             occ_col = 'occ_{}'.format(use)
-            df[occ_col] = parcel_occupancy_callback(use, oldest_year)
+            df[occ_col] = parcel_occupancy_callback(use)
 
     # convert from cost to yearly rent
     if pf.residential_to_yearly and 'residential' in df.columns:
         df["residential"] *= pf.cap_rate
-
-    # df = occupancy_regional(df, pf, start_year)
 
     return df
 
@@ -756,7 +711,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     ----------
     df : DataFrame Wrapper
         The data frame wrapper for the parcel data
-    parcel_use_allowed_callback : function
+    parcel_use_allowed_callback : func
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
     pf: SqFtProForma object
@@ -788,7 +743,7 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
 def run_feasibility(parcels, parcel_price_callback,
                     parcel_use_allowed_callback,
                     parcel_occupancy_callback=None, start_year=None,
-                    years_back=20, cfg=None, **kwargs):
+                    cfg=None, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -809,8 +764,6 @@ def run_feasibility(parcels, parcel_price_callback,
         expected occupancy
     start_year : int
         Year to start tracking occupancy
-    years_back : int
-        Number of years back to track occupancy for
     cfg : str
         The name of the yaml file to read pro forma configurations from
 
@@ -824,7 +777,7 @@ def run_feasibility(parcels, parcel_price_callback,
           else sqftproforma.SqFtProForma.from_defaults())
     df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
                                          pf, parcel_occupancy_callback,
-                                         start_year, years_back)
+                                         start_year)
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs)
     orca.add_table('feasibility', feasibility)
 

@@ -59,16 +59,6 @@ def diagnostic_output(households, buildings, parcels, zones, year, summary):
     summary.add_zone_output(zones, "diagnostic_outputs", year)
 
 
-@orca.step('regional_occupancy')
-def regional_occupancy(year, occupancy, buildings,
-                       households, jobs, new_households, new_jobs):
-    occupancy = utils.run_occupancy(year, occupancy, buildings,
-                                    households, new_households,
-                                    jobs, new_jobs,
-                                    buildings.sqft_per_job, 20)
-    print(occupancy)
-
-
 @orca.step('residential_developer')
 def residential_developer(feasibility, households, buildings, parcels, year,
                           summary, form_to_btype_func, add_extra_columns_func):
@@ -93,7 +83,7 @@ def residential_developer(feasibility, households, buildings, parcels, year,
 def residential_developer_profit(feasibility, households, buildings,
                                  parcels, year, summary,
                                  form_to_btype_func,
-                                 add_extra_columns_func, res_selection):
+                                 add_extra_columns_func, custom_selection):
     new_buildings = utils.run_developer(
         "residential",
         households,
@@ -107,7 +97,7 @@ def residential_developer_profit(feasibility, households, buildings,
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        custom_selection_func=res_selection)
+        custom_selection_func=custom_selection)
 
     summary.add_parcel_output(new_buildings)
 
@@ -137,7 +127,7 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
 def non_residential_developer_profit(feasibility, jobs, buildings,
                                      parcels, year, summary,
                                      form_to_btype_func,
-                                     add_extra_columns_func, nonres_selection):
+                                     add_extra_columns_func, custom_selection):
     new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
         jobs,
@@ -151,6 +141,6 @@ def non_residential_developer_profit(feasibility, jobs, buildings,
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func,
-        custom_selection_func=nonres_selection)
+        custom_selection_func=custom_selection)
 
     summary.add_parcel_output(new_buildings)

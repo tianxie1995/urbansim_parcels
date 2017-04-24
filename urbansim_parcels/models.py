@@ -135,13 +135,48 @@ def price_vars(net):
     orca.add_table("nodes", nodes)
 
 
-@orca.step('regional_occupancy')
-def regional_occupancy(year, occupancy, buildings,
-                       households, jobs, new_households, new_jobs):
-    occupancy = utils.run_occupancy(year, occupancy, buildings,
-                                    households, new_households,
-                                    jobs, new_jobs, 400.0, 20)
-    print(occupancy)
+@orca.step('occupancy_vars')
+def occupancy_vars(year):
+    oldest_year = year - 20
+
+    building_occupancy = utils.building_occupancy(oldest_year)
+    orca.add_table('building_occupancy', building_occupancy)
+
+    res_mean = building_occupancy.occupancy_res.mean()
+    print('Average residential occupancy in {} for buildings built'
+          ' since {}: {:.2f}%'.format(year, oldest_year, res_mean * 100))
+
+    nonres_mean = building_occupancy.occupancy_nonres.mean()
+    print('Average non-residential occupancy in {} for buildings built'
+          ' since {}: {:.2f}%'.format(year, oldest_year, nonres_mean * 100))
+
+
+@orca.step('occupancy_vars_network')
+def occupancy_vars_network(year, net):
+    """
+    Alternative step that additionally aggregates occupancy along the Pandana
+    network (the basic occupancy_vars step above relies on additional
+    aggregation in the parcel_average_occupancy callback function).
+    """
+
+    oldest_year = year - 20
+    building_occupancy = utils.building_occupancy(oldest_year)
+    orca.add_table('building_occupancy', building_occupancy)
+
+    res_mean = building_occupancy.occupancy_res.mean()
+    print('Average residential occupancy in {} for buildings built'
+          ' since {}: {:.2f}%'.format(year, oldest_year, res_mean * 100))
+
+    nonres_mean = building_occupancy.occupancy_nonres.mean()
+    print('Average non-residential occupancy in {} for buildings built'
+          ' since {}: {:.2f}%'.format(year, oldest_year, nonres_mean * 100))
+
+    nodes2 = networks.from_yaml(net, "occupancy_vars.yaml")
+    nodes2 = nodes2.fillna(0)
+    print(nodes2.describe())
+    nodes = orca.get_table('nodes')
+    nodes = nodes.to_frame().join(nodes2)
+    orca.add_table("nodes", nodes)
 
 
 @orca.step('feasibility')
@@ -151,51 +186,21 @@ def feasibility(parcels,
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
-                          years_back=20,
                           cfg='proforma.yaml')
-
-
-def modify_df_occupancy(self, form, df):
-    """
-    Passed to modify_df parameter of SqftProForma.lookup().
-
-    Requires df to have a set of columns, one for each of the uses passed in
-    the configuration, where values are proportion of new development that
-    would be expected to be occupied, and names have "occ_" prefix with use.
-    Typical names would be "occ_residential", "occ_retail", etc.
-    """
-
-    occupancies = ['occ_{}'.format(use) for use in self.uses]
-    if set(occupancies).issubset(set(df.columns.tolist())):
-        df['weighted_occupancy'] = np.dot(
-            df[occupancies],
-            self.forms[form])
-    else:
-        df['weighted_occupancy'] = 1.0
-
-    return df
-
-
-def modify_revenues_occupancy(self, form, df, revenues):
-    """
-    Passed to modify_revenues parameter of SqftProForma.lookup().
-    Note that the weighted_occupancy column must be transformed into values
-    because revenues is a numpy ndarray.
-    """
-    return revenues * df.weighted_occupancy.values
 
 
 @orca.step('feasibility_with_occupancy')
 def feasibility_with_occupancy(parcels,
                                parcel_sales_price_sqft_func,
                                parcel_is_allowed_func,
-                               parcel_occupancy_func):
+                               parcel_occupancy_func,
+                               modify_df_occupancy,
+                               modify_revenues_occupancy):
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
                           parcel_occupancy_func,
                           start_year=orca.get_injectable('start_year'),
-                          years_back=20,
                           cfg='proforma.yaml',
                           modify_df=modify_df_occupancy,
                           modify_revenues=modify_revenues_occupancy)

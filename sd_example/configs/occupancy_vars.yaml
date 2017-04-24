@@ -1,0 +1,45 @@
+name: networks3
+
+desc: Occupancy Variables
+
+model_type: networks
+
+node_col: node_id
+
+variable_definitions:
+
+-   aggregation: average
+    dataframe: building_occupancy
+    decay: flat
+    filters:
+    - general_type == "Residential"
+    name: occ_residential
+    radius: 1000
+    varname: occupancy_res
+
+-   aggregation: average
+    dataframe: building_occupancy
+    decay: flat
+    filters:
+    - general_type == "Retail"
+    name: occ_retail
+    radius: 2000
+    varname: occupancy_nonres
+
+-   aggregation: average
+    dataframe: building_occupancy
+    decay: flat
+    filters:
+    - general_type == "Office"
+    name: occ_office
+    radius: 2000
+    varname: occupancy_nonres
+
+-   aggregation: average
+    dataframe: building_occupancy
+    decay: flat
+    filters:
+    - general_type == "Industrial"
+    name: occ_industrial
+    radius: 2000
+    varname: occupancy_nonres
