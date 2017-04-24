@@ -20,9 +20,9 @@ install:
 - conda list
 - pip install pycodestyle
 - pip install orca
-- pip install https://github.com/udst/urbansim/archive/python3.zip
+- pip install https://github.com/udst/urbansim/archive/master.zip
 - pip install osmnet pandana
-- cd .. && git clone -b market_research git@github.com:urbansim/developer.git
+- cd .. && git clone -b dev git@github.com:urbansim/developer.git
 - pip install ./developer
 - cd $TRAVIS_BUILD_DIR && pip install .
 
