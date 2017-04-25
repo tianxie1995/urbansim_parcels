@@ -93,6 +93,11 @@ def parcels(store):
     return df
 
 
+@orca.table('pipeline', cache=True)
+def pipeline():
+    return pd.DataFrame()
+
+
 # these are shapes - "zones" in the bay area
 @orca.table('zones', cache=True)
 def zones(store):

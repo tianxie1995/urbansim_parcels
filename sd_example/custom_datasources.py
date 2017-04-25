@@ -69,6 +69,37 @@ def zoning(store):
     return df
 
 
+@orca.table('dev_sites', cache=True)
+def dev_sites(store):
+    sde = store['scheduled_development_events']
+    cols = ['parcel_id', 'development_type_id', 'improvement_value',
+            'residential_units', 'non_residential_sqft', 'stories',
+            'year_built']
+    df = sde[cols].reset_index(drop=True)
+    df['dev_project_id'] = df.index.values
+    df.index.name = 'dev_site_id'
+    return df
+
+
+@orca.table('dev_projects', cache=True)
+def dev_projects(dev_sites):
+    df = pd.DataFrame(index=dev_sites.index.values)
+    df.index.name = 'dev_project_id'
+    df['pipeline_id'] = df.index.values
+    return df
+
+
+@orca.table('pipeline', cache=True)
+def pipeline(dev_projects, dev_sites):
+    df = pd.DataFrame(index=dev_projects.index.values)
+    df.index.name = 'pipeline_id'
+    df['completion_year'] = misc.reindex(dev_sites.year_built,
+                                         dev_projects.pipeline_id)
+    df['sites'] = 1
+    df['sites_built'] = 0
+    return df
+
+
 @orca.table('scheduled_development_events', cache=True)
 def scheduled_development_events(store, settings):
     if settings['urbancanvas']:
