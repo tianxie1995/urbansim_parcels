@@ -18,9 +18,9 @@ orca.run([
           "households_relocation",
           "hlcm_simulate",  # demand/location models
           "price_vars",
-          "new_feasibility",  # supply/proforma models
-          "new_residential_developer",
-          "new_non_residential_developer",
+          "feasibility_with_pipeline",  # supply/proforma models
+          "residential_developer_pipeline",
+          "non_residential_developer_pipeline",
           "build_from_pipeline",
           "model_integration_indicators",
           # "buildings_to_uc", #export buildings to urban canvas
