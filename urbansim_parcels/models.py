@@ -189,6 +189,16 @@ def feasibility(parcels,
                           cfg='proforma.yaml')
 
 
+@orca.step('new_feasibility')
+def new_feasibility(parcels,
+                    parcel_sales_price_sqft_func,
+                    parcel_is_allowed_func):
+    utils.run_new_feasibility(parcels,
+                              parcel_sales_price_sqft_func,
+                              parcel_is_allowed_func,
+                              cfg='proforma.yaml')
+
+
 @orca.step('feasibility_with_occupancy')
 def feasibility_with_occupancy(parcels,
                                parcel_sales_price_sqft_func,
@@ -299,6 +309,11 @@ def non_residential_developer_profit(feasibility, jobs, buildings,
         custom_selection_func=nonres_selection)
 
     summary.add_parcel_output(new_buildings)
+
+
+@orca.step('build_from_pipeline')
+def build_from_pipeline(pipeline, dev_projects, dev_sites, year):
+    utils.build_from_pipeline(pipeline, dev_projects, dev_sites, year)
 
 
 @orca.step("scheduled_development_events")

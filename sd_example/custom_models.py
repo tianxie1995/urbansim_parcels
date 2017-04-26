@@ -91,7 +91,6 @@ def rsh_simulate(buildings, aggregations):
 
 @orca.step('occupancy_vars')
 def occupancy_vars(year, net):
-
     oldest_year = year - 20
     building_occupancy = custom_utils.building_occupancy(oldest_year)
     orca.add_table('building_occupancy', building_occupancy)
@@ -133,11 +132,56 @@ def residential_developer(feasibility, households, buildings, parcels, year,
     summary.add_parcel_output(new_buildings)
 
 
+@orca.step('new_residential_developer')
+def new_residential_developer(feasibility, households, buildings, parcels,
+                              year,
+                              summary, form_to_btype_func,
+                              add_extra_columns_func):
+    new_buildings = utils.new_run_developer(
+        "residential",
+        households,
+        buildings,
+        'residential_units',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_residential_units,
+        'res_developer.yaml',
+        year=year,
+        target_vacancy=.10,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func)
+
+    summary.add_parcel_output(new_buildings)
+
+
 @orca.step('non_residential_developer')
 def non_residential_developer(feasibility, jobs, buildings, parcels, year,
                               summary, form_to_btype_func,
                               add_extra_columns_func):
     new_buildings = utils.run_developer(
+        ["office", "retail", "industrial"],
+        jobs,
+        buildings,
+        'job_spaces',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_job_spaces,
+        'nonres_developer.yaml',
+        year=year,
+        target_vacancy=.21,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func)
+
+    summary.add_parcel_output(new_buildings)
+
+
+@orca.step('new_non_residential_developer')
+def new_non_residential_developer(feasibility, jobs, buildings, parcels, year,
+                                  summary, form_to_btype_func,
+                                  add_extra_columns_func):
+    new_buildings = utils.new_run_developer(
         ["office", "retail", "industrial"],
         jobs,
         buildings,
