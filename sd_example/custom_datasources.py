@@ -75,47 +75,24 @@ def dev_sites(store):
     removals = ['scheduled_development_event_id', 'note']
     cols = [c for c in sde.columns if c not in removals]
     df = sde[cols].reset_index(drop=True)
-    df['dev_project_id'] = df.index.values
+    df['project_id'] = df.index.values
     df['pipeline_id'] = df.index.values
     df['residential_sqft'] = (df.sqft_per_unit
                               * df.residential_units)
     df['job_spaces'] = df.non_residential_sqft / 400
-    df.index.name = 'dev_site_id'
-    return df
-
-
-@orca.table('dev_projects', cache=True)
-def dev_projects(dev_sites):
-    df = pd.DataFrame(index=dev_sites.index.values)
-    df.index.name = 'dev_project_id'
-    df['pipeline_id'] = df.index.values
+    df.index.name = 'site_id'
     return df
 
 
 @orca.table('pipeline', cache=True)
-def pipeline(dev_projects, dev_sites):
-    df = pd.DataFrame(index=dev_projects.index.values)
-    df.index.name = 'pipeline_id'
-    df['completion_year'] = misc.reindex(dev_sites.year_built,
-                                         dev_projects.pipeline_id)
+def pipeline(dev_sites):
+    df = pd.DataFrame(index=dev_sites.index.values)
+    df.index.name = 'project_id'
+    df['completion_year'] = dev_sites.year_built
     df['sites'] = 1
+    df['sites_active'] = 1
     df['sites_built'] = 0
     return df
-
-
-@orca.injectable('projects_in_pipeline', cache=False)
-def projects_in_pipeline(dev_projects, pipeline):
-    dp = dev_projects.to_frame()
-    in_pipeline = dp[dp.index.isin(pipeline.index)]
-    return in_pipeline.index.tolist()
-
-
-@orca.injectable('sites_in_pipeline', cache=False)
-def sites_in_pipeline(dev_sites, projects_in_pipeline):
-    ds = dev_sites.to_frame()
-    in_pipeline = (ds[ds.dev_project_id
-                   .isin(projects_in_pipeline)])
-    return in_pipeline.index.tolist()
 
 
 @orca.table('scheduled_development_events', cache=True)

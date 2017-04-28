@@ -5,17 +5,304 @@ from __future__ import absolute_import
 import orca
 import numpy as np
 import pandas as pd
-from urbansim.models import RegressionModel
-from urbansim.models import SegmentedRegressionModel
-from urbansim.models import MNLDiscreteChoiceModel
-from urbansim.models import SegmentedMNLDiscreteChoiceModel
-from urbansim.models import GrowthRateTransition
-from urbansim.models import transition
-from urbansim.models.supplydemand import supply_and_demand
 from developer import sqftproforma
 from developer import develop
 from urbansim.utils import misc
 from . import utils
+
+
+def get_new_ids(old_df, new_df, index_name):
+    """
+    Returns a list of values that can be used as unique indices for new
+    entries into a DataFrame.
+
+    Parameters
+    ----------
+    old_df : DataFrame
+        DataFrame to generate new indices for
+    new_df : DataFrame
+        DataFrame to add new indices to
+    index_name : str
+        Name for new index on new_df
+
+    Returns
+    -------
+    new_df : DataFrame
+    """
+    maxind = np.max(old_df.index.values)
+    new_df.reset_index(drop=True, inplace=True)
+    new_df.index = new_df.index + maxind + 1
+    new_df.index.name = index_name
+    return new_df
+
+
+def add_sites(pipeline, sites, new_sites, project_column=None):
+    """
+    Adds new sites to existing sites table, creates new projects from new
+    sites, and adds new projects to pipeline.
+
+    Parameters
+    ----------
+    pipeline : DataFrame
+        Existing pipeline table
+    sites : DataFrame
+        Existing sites table
+    new_sites : DataFrame
+        Sites to add to sites table
+    project_column : str, optional
+        Name of column in new_sites table. If sites have common values in this
+        column, they will be added to the pipeline with the same project_id.
+
+    Returns
+    -------
+    pipeline : DataFrame
+    sites : DataFrame
+    """
+
+    if project_column is None:
+        new_sites['temp_group'] = pd.Series(range(len(new_sites)))
+        project_column = 'temp_group'
+
+    # Get sites ready to add to site table
+    new_sites = get_new_ids(sites, new_sites, 'site_id')
+
+    # Get projects ready to add to pipeline table
+    new_projects = (new_sites
+                    .reset_index(drop=False)    # Keep site_id for counts
+                    .groupby(project_column)
+                    .agg({'site_id': 'count', 'year_built': 'max'})
+                    .reset_index())             # Keep project_column
+    new_projects = get_new_ids(pipeline, new_projects, 'project_id')
+    new_projects.rename(columns={'site_id': 'sites',
+                                 'year_built': 'completion_year'},
+                        inplace=True)
+    new_projects['sites_active'] = new_projects['sites']
+    new_projects['sites_built'] = 0
+
+    # Retroactively match project column to new sites
+    project_site_reference = (new_projects[[project_column]]
+                              .reset_index()
+                              .set_index(project_column))
+    new_sites = new_sites.merge(project_site_reference,
+                                left_on=project_column, right_index=True)
+    new_projects.drop(project_column, axis=1, inplace=True)
+
+    pipeline = pd.concat([pipeline, new_projects], verify_integrity=True)
+    sites = pd.concat([sites, new_sites], verify_integrity=True)
+
+    return pipeline, sites
+
+
+def add_sites_orca(pipeline_name, sites_name, new_sites,
+                   project_column=None):
+    """
+    Wrapper for add_sites function to access Orca tables
+
+    Parameters
+    ----------
+    pipeline_name : str
+        Name of pipeline table in Orca
+    sites_name : str
+        Name of sites table in Orca
+    new_sites : DataFrame
+        Sites to add to sites table
+    project_column : str, optional
+        Name of column in new_sites table. If sites have common values in this
+        column, they will be added to the pipeline with the same project_id.
+    """
+    pipeline = orca.get_table(pipeline_name).to_frame()
+    sites = orca.get_table(sites_name).to_frame()
+    new_pipeline, new_sites = add_sites(pipeline, sites,
+                                        new_sites, project_column)
+    orca.add_table(pipeline_name, new_pipeline)
+    orca.add_table(sites_name, new_sites)
+
+
+def _create_development_projects(parcels):
+    """
+    This has to load the parcel table and remove those already involved
+    in pipeline projects
+
+    """
+
+    # Read current dev sites and pipeline
+    ds = orca.get_table('dev_sites').to_frame()
+    parcels_in_pipeline = ds.parcel_id.unique()
+
+    new_sites = parcels.to_frame().copy()
+
+    print('{} parcels before removing those already in pipeline'
+          .format(len(new_sites)))
+
+    # Remove parcels in the pipeline
+    new_sites = (new_sites
+                 .loc[~new_sites.index.isin(parcels_in_pipeline)])
+
+    print('{} parcels available'.format(len(new_sites)))
+    return new_sites
+
+
+def _create_large_projects(parcels, cfg, parcel_price_callback,
+                           parcel_occupancy_callback, start_year,
+                           parcel_use_allowed_callback, **kwargs):
+    # Read current dev sites and pipeline
+    ds = orca.get_table('dev_sites').to_frame()
+    sites_in_pipeline = ds.loc[orca.get_injectable('sites_in_pipeline')]
+    parcel_ids_in_pipeline = sites_in_pipeline.parcel_id
+    candidate_sites = parcels.to_frame().copy()
+
+    print('{} parcels before removing those already in pipeline'
+          .format(len(candidate_sites)))
+
+    # Remove parcels in the pipeline
+    candidate_sites = (candidate_sites
+                       .loc[~candidate_sites
+                            .index.isin(parcel_ids_in_pipeline)])
+
+    print('{} parcels before split'
+          .format(len(candidate_sites)))
+
+    # TODO Read in user configs
+
+    # TODO Split parcels
+    upperbound = 1000000 / 43560
+    lowerbound = 200000 / 43560
+
+    large_sites = (candidate_sites.
+                   loc[(candidate_sites.parcel_acres > lowerbound)
+                       & (candidate_sites.parcel_acres < upperbound)])
+
+    sites = (candidate_sites
+             .loc[~candidate_sites.index.isin(large_sites.index.values)])
+
+    print('{} large sites removed'.format(len(large_sites)))
+    print('{} sites remaining'.format(len(sites)))
+
+    area_col = 'parcel_acres'
+    other_split_cols = ['land_cost']
+    splits = 10
+    size = 0.25
+    # split_sites = _split_evenly(large_sites, area_col,
+    #                             other_split_cols, splits)
+    split_sites = _split_by_size(large_sites, area_col,
+                                 other_split_cols, size)
+
+    print('{} split sites ready for feasibility'.format(len(split_sites)))
+
+    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
+          else sqftproforma.SqFtProForma.from_defaults())
+    pf.pass_through = ['parcel_id']
+    df = prepare_parcels_for_feasibility(split_sites, parcel_price_callback,
+                                         pf, parcel_occupancy_callback,
+                                         start_year)
+
+    # lookup_by_form
+    lookup_results = {}
+
+    forms = pf.forms_to_test or pf.forms
+    for form in forms:
+        print("Computing feasibility for form %s" % form)
+        allowed = parcel_use_allowed_callback(form).loc[df.parcel_id.unique()]
+
+        newdf = df.loc[misc.reindex(allowed, df.parcel_id)]
+
+        lookup_results[form] = pf.lookup(form, newdf, **kwargs)
+
+    feasibility = pd.concat(lookup_results.values(),
+                            keys=lookup_results.keys(),
+                            axis=1)
+
+    orca.add_table('split_feasibility', feasibility)
+
+    res = feasibility['residential']
+    # build any with combined profit > $500,000
+    grouped_profit = res.groupby('parcel_id').agg('sum')
+    profitable_parcels = (grouped_profit
+                          .loc[grouped_profit.max_profit > 1000000]
+                          .index.values)
+
+    # Construction time
+    # Just figure out year built for each site
+
+    year = orca.get_injectable('year')
+    for parcel in profitable_parcels:
+        sites_in_proj = res.loc[res.parcel_id == parcel].index
+        # Randomly add between 0 and 3 months to home construction
+        add_months = np.random.randint(0, 3, len(sites_in_proj))
+        res.loc[sites_in_proj, 'construction_time_mod'] = (
+            res.loc[sites_in_proj, 'construction_time'] + add_months)
+
+        res.loc[sites_in_proj, 'year_built'] = (
+            res.loc[sites_in_proj, 'construction_time_mod'] // 12 + year)
+    # What about existing buildings?
+
+    add_sites_orca('pipeline', 'dev_sites', res, 'parcel_id')
+
+    return sites
+
+
+def _split_evenly(df, area_col, other_split_cols, num_splits):
+    split_cols = [area_col] + other_split_cols
+
+    repeated_index = np.repeat(df.index.values, num_splits)
+    split_df = df.loc[repeated_index].copy()
+    split_df.index.name = 'parcel_id'
+    split_df.reset_index(inplace=True)
+
+    # Divide values in certain columns
+    split_df.loc[:, split_cols] /= num_splits
+    return split_df
+
+
+def _split_by_size(df, area_col, other_split_cols, size):
+    split_cols = [area_col] + other_split_cols
+
+    df['sites_available'] = (df[area_col] // size).astype(int)
+
+    repeated_index = np.repeat(df.index.values, df.sites_available.values)
+    split_df = df.loc[repeated_index].copy()
+    split_df.index.name = 'parcel_id'
+    split_df.reset_index(inplace=True)
+
+    for col in split_cols:
+        split_df[col] = split_df[col] / split_df.sites_available
+    return split_df
+
+
+def run_feasibility_large_parcels(parcels, parcel_price_callback,
+                                  parcel_use_allowed_callback,
+                                  parcel_occupancy_callback=None,
+                                  start_year=None,
+                                  cfg=None, **kwargs):
+    """
+    Execute development feasibility on large parcels
+
+    Parameters
+    ----------
+    parcels : DataFrame Wrapper
+        The data frame wrapper for the parcel data
+    parcel_price_callback : function
+        A callback which takes each use of the pro forma and returns a series
+        with index as parcel_id and value as yearly_rent
+    parcel_use_allowed_callback : function
+        A callback which takes each form of the pro forma and returns a series
+        with index as parcel_id and value and boolean whether the form
+        is allowed on the parcel
+    parcel_occupancy_callback : function
+        A callback which takes each use of the pro forma, along with a start
+        year, and returns series with index as parcel_id and value as
+        expected occupancy
+    start_year : int
+        Year to start tracking occupancy
+    cfg : str
+        The name of the yaml file to read pro forma configurations from
+
+    Returns
+    -------
+    Adds a table called feasibility to the sim object (returns nothing)
+    """
+
+    return
 
 
 def run_feasibility(parcels, parcel_price_callback,
@@ -60,24 +347,6 @@ def run_feasibility(parcels, parcel_price_callback,
     feasibility = utils.lookup_by_form(df, parcel_use_allowed_callback,
                                        pf, **kwargs)
     orca.add_table('feasibility', feasibility)
-
-
-def _create_development_projects(parcels):
-    ds = orca.get_table('dev_sites').to_frame()
-    sites_in_pipeline = ds.loc[orca.get_injectable('sites_in_pipeline')]
-    parcel_ids_in_pipeline = sites_in_pipeline.parcel_id
-    candidate_sites = parcels.to_frame().copy()
-
-    # Remove parcels in the pipeline
-    candidate_sites = (candidate_sites
-                       [~candidate_sites
-                        .index.isin(parcel_ids_in_pipeline)])
-
-    # TODO Read in user configs
-
-    # TODO Split parcels
-
-    return candidate_sites
 
 
 def prepare_parcels_for_feasibility(sites, parcel_price_callback,
@@ -128,26 +397,26 @@ def prepare_parcels_for_feasibility(sites, parcel_price_callback,
     return sites
 
 
-def merge_dfs(old_df, new_df, index_name):
-    """
-
-    Parameters
-    ----------
-    old_df
-    new_df
-    index_name
-
-    Returns
-    -------
-    concat_df : DataFrame
-    new_df.index : Index
-    """
-    maxind = np.max(old_df.index.values)
-    new_df = new_df.reset_index(drop=True)
-    new_df.index = new_df.index + maxind + 1
-    concat_df = pd.concat([old_df, new_df], verify_integrity=True)
-    concat_df.index.name = index_name
-    return concat_df, new_df.index
+# def merge_dfs(old_df, new_df, index_name):
+#     """
+#
+#     Parameters
+#     ----------
+#     old_df
+#     new_df
+#     index_name
+#
+#     Returns
+#     -------
+#     concat_df : DataFrame
+#     new_df.index : Index
+#     """
+#     maxind = np.max(old_df.index.values)
+#     new_df = new_df.reset_index(drop=True)
+#     new_df.index = new_df.index + maxind + 1
+#     concat_df = pd.concat([old_df, new_df], verify_integrity=True)
+#     concat_df.index.name = index_name
+#     return concat_df, new_df.index
 
 
 def run_developer(forms, agents, buildings, supply_fname, feasibility,
@@ -159,7 +428,6 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   unplace_agents=['households', 'jobs'],
                   num_units_to_build=None, profit_to_prob_func=None,
                   custom_selection_func=None):
-
     cfg = misc.config(cfg)
 
     target_units = (
@@ -193,45 +461,15 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                               supply_fname, remove_developed_buildings,
                               unplace_agents))
 
-    utils.add_new_units(dev, new_sites)
-
     # New stuff below
 
     years_to_build = new_sites.construction_time // 12
     current_year = orca.get_injectable('year')
     new_sites['year_built'] = years_to_build + current_year
 
-    ds = orca.get_table('dev_sites').to_frame()
-    all_sites, new_site_ids = merge_dfs(ds, new_sites, 'dev_site_id')
+    add_sites_orca('pipeline', 'dev_sites', new_sites)
 
-    dp = orca.get_table('dev_projects').to_frame()
-    new_projects = pd.DataFrame(index=range(len(new_sites)))
-    all_projects, new_project_ids = merge_dfs(dp, new_projects,
-                                              'dev_project_id')
-    all_sites.loc[new_site_ids, 'dev_project_id'] = new_project_ids
-
-    pl = orca.get_table('pipeline').to_frame()
-
-    new_pipeline = pd.DataFrame(index=range(len(new_projects)))
-    all_pipeline, new_pipeline_ids = merge_dfs(pl, new_pipeline, 'pipeline_id')
-    all_projects.loc[new_project_ids, 'pipeline_id'] = new_pipeline_ids
-    all_sites.loc[new_site_ids, 'pipeline_id'] = new_pipeline_ids
-
-    # add pipeline attributes
-    all_pipeline.loc[new_pipeline_ids, 'completion_year'] = (
-        all_sites.loc[new_site_ids, ['pipeline_id', 'year_built']]
-        .set_index('pipeline_id', drop=True)
-        ['year_built'])
-    all_pipeline.loc[new_pipeline_ids, 'sites'] = 1
-
-    # drop columns not in original dev sites
-    # all_sites = all_sites[ds.columns.tolist()]
-
-    orca.add_table('dev_sites', all_sites)
-    orca.add_table('dev_projects', all_projects)
-    orca.add_table('pipeline', all_pipeline)
-
-    return all_sites
+    return new_sites
 
 
 def process_new_buildings(feasibility, buildings, new_buildings,
@@ -263,40 +501,69 @@ def process_new_buildings(feasibility, buildings, new_buildings,
     return new_buildings
 
 
-def build_from_pipeline(pipeline, dev_projects, dev_sites, year):
-    pl, dp, ds = (table.to_frame() for table in
-                  [pipeline, dev_projects, dev_sites])
+def build_from_pipeline(pipeline, sites, buildings, year):
+    """
 
-    print('{} projects in pipeline. By completion year:'
-          .format(len(pl)))
-    print(pipeline.completion_year.value_counts(ascending=True))
+    Parameters
+    ----------
+    pipeline : DataFrame
+    sites : DataFrame
+    buildings : DataFrame
+    year : int
 
-    pl_this_year = pl.loc[pl.completion_year == year]
-    ds_this_year = ds.loc[(ds.pipeline_id.isin(pl_this_year.index))
-                          & (ds.year_built == year)]
-    dp_this_year = dp.loc[ds_this_year.dev_project_id.values]
+    Returns
+    -------
+    new_pipeline : DataFrame
+    new_sites : DataFrame
+    new_buildings : DataFrame
+    """
 
-    print('Constructing {} buildings from {} projects'
-          .format(len(ds_this_year), len(dp_this_year)))
+    ds = sites.loc[sites.year_built == year]
 
-    old_buildings = orca.get_table('buildings').to_frame()
-    all_buildings = utils.merge_buildings(old_buildings, ds_this_year)
-    orca.add_table('buildings', all_buildings)
+    # Build sites due to be built this year
+    add_buildings = ds.drop('project_id', axis=1)
+    new_buildings = utils.merge_buildings(buildings, add_buildings)
 
-    # Remove built dev sites from table
-    new_ds = ds[~ds.index.isin(ds_this_year.index)]
-    orca.add_table('dev_sites', new_ds)
+    # Mark pipeline with changes
+    sites_built_per_project = ds.project_id.value_counts()
+    built_projects = sites_built_per_project.index
+    pipeline.loc[built_projects, 'sites_built'] += sites_built_per_project
+    pipeline.loc[built_projects, 'sites_active'] -= sites_built_per_project
 
-    # Remove built dev projects from table
-    active_dp = new_ds.dev_project_id.value_counts().index
-    new_dp = dp.loc[active_dp]
-    orca.add_table('dev_projects', new_dp)
+    # Remove from pipeline if finished
+    new_pipeline = pipeline.loc[(pipeline.sites_active > 0)
+                                & (pipeline.completion_year > year)]
 
-    # Remove built projects from pipeline
-    active_pipeline = new_ds.pipeline_id.value_counts().index
-    new_pipeline = pl.loc[active_pipeline]
-    orca.add_table('pipeline', new_pipeline)
+    new_sites = sites.loc[~sites.index.isin(ds.index)]
 
-    print('{} projects left in pipeline'.format(len(new_pipeline)))
+    return new_pipeline, new_sites, new_buildings
 
-    return all_buildings
+
+def build_from_pipeline_orca(pipeline_name, sites_name, buildings_name,
+                             year_name):
+    """
+    Wrapper for build_from_pipeline function to access Orca tables
+
+    Parameters
+    ----------
+    pipeline_name : str
+        Name of pipeline table in Orca
+    sites_name : str
+        Name of sites table in Orca
+    buildings_name : str
+        Name of buildings table in Orca
+    year_name : str
+        Name of year injectable in Orca
+    """
+    table_names = [pipeline_name, sites_name, buildings_name]
+
+    pipeline, sites, buildings = (orca.get_table(name).to_frame()
+                                  for name in table_names)
+    year = orca.get_injectable(year_name)
+
+    results = build_from_pipeline(pipeline, sites, buildings, year)
+    new_pipeline, new_sites, new_buildings = results
+
+    orca.add_table(pipeline_name, new_pipeline)
+    orca.add_table(sites_name, new_sites)
+    orca.add_table(buildings_name, new_buildings)
