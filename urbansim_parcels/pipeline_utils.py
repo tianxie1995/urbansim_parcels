@@ -8,7 +8,6 @@ import pandas as pd
 from developer import sqftproforma
 from developer import develop
 from urbansim.utils import misc
-from . import utils
 
 
 def get_new_ids(old_df, new_df, index_name):
@@ -118,7 +117,7 @@ def add_sites_orca(pipeline_name, sites_name, new_sites,
     orca.add_table(sites_name, new_sites)
 
 
-def _create_development_projects(parcels):
+def remove_pipelined_sites(parcels):
     """
     This has to load the parcel table and remove those already involved
     in pipeline projects
@@ -135,8 +134,8 @@ def _create_development_projects(parcels):
           .format(len(new_sites)))
 
     # Remove parcels in the pipeline
-    new_sites = (new_sites
-                 .loc[~new_sites.index.isin(parcels_in_pipeline)])
+    new_sites = (new_sites.loc
+                 [~new_sites.index.isin(parcels_in_pipeline)])
 
     print('{} parcels available'.format(len(new_sites)))
     return new_sites
@@ -155,9 +154,8 @@ def _create_large_projects(parcels, cfg, parcel_price_callback,
           .format(len(candidate_sites)))
 
     # Remove parcels in the pipeline
-    candidate_sites = (candidate_sites
-                       .loc[~candidate_sites
-                            .index.isin(parcel_ids_in_pipeline)])
+    candidate_sites = (candidate_sites.loc
+                       [~candidate_sites.index.isin(parcel_ids_in_pipeline)])
 
     print('{} parcels before split'
           .format(len(candidate_sites)))
@@ -269,86 +267,6 @@ def _split_by_size(df, area_col, other_split_cols, size):
     return split_df
 
 
-def run_feasibility_large_parcels(parcels, parcel_price_callback,
-                                  parcel_use_allowed_callback,
-                                  parcel_occupancy_callback=None,
-                                  start_year=None,
-                                  cfg=None, **kwargs):
-    """
-    Execute development feasibility on large parcels
-
-    Parameters
-    ----------
-    parcels : DataFrame Wrapper
-        The data frame wrapper for the parcel data
-    parcel_price_callback : function
-        A callback which takes each use of the pro forma and returns a series
-        with index as parcel_id and value as yearly_rent
-    parcel_use_allowed_callback : function
-        A callback which takes each form of the pro forma and returns a series
-        with index as parcel_id and value and boolean whether the form
-        is allowed on the parcel
-    parcel_occupancy_callback : function
-        A callback which takes each use of the pro forma, along with a start
-        year, and returns series with index as parcel_id and value as
-        expected occupancy
-    start_year : int
-        Year to start tracking occupancy
-    cfg : str
-        The name of the yaml file to read pro forma configurations from
-
-    Returns
-    -------
-    Adds a table called feasibility to the sim object (returns nothing)
-    """
-
-    return
-
-
-def run_feasibility(parcels, parcel_price_callback,
-                    parcel_use_allowed_callback,
-                    parcel_occupancy_callback=None, start_year=None,
-                    cfg=None, **kwargs):
-    """
-    Execute development feasibility on all parcels
-
-    Parameters
-    ----------
-    parcels : DataFrame Wrapper
-        The data frame wrapper for the parcel data
-    parcel_price_callback : function
-        A callback which takes each use of the pro forma and returns a series
-        with index as parcel_id and value as yearly_rent
-    parcel_use_allowed_callback : function
-        A callback which takes each form of the pro forma and returns a series
-        with index as parcel_id and value and boolean whether the form
-        is allowed on the parcel
-    parcel_occupancy_callback : function
-        A callback which takes each use of the pro forma, along with a start
-        year, and returns series with index as parcel_id and value as
-        expected occupancy
-    start_year : int
-        Year to start tracking occupancy
-    cfg : str
-        The name of the yaml file to read pro forma configurations from
-
-    Returns
-    -------
-    Adds a table called feasibility to the sim object (returns nothing)
-    """
-
-    cfg = misc.config(cfg)
-    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
-          else sqftproforma.SqFtProForma.from_defaults())
-    sites = _create_development_projects(parcels)
-    df = prepare_parcels_for_feasibility(sites, parcel_price_callback,
-                                         pf, parcel_occupancy_callback,
-                                         start_year)
-    feasibility = utils.lookup_by_form(df, parcel_use_allowed_callback,
-                                       pf, **kwargs)
-    orca.add_table('feasibility', feasibility)
-
-
 def prepare_parcels_for_feasibility(sites, parcel_price_callback,
                                     pf, parcel_occupancy_callback=None,
                                     start_year=None):
@@ -397,110 +315,6 @@ def prepare_parcels_for_feasibility(sites, parcel_price_callback,
     return sites
 
 
-# def merge_dfs(old_df, new_df, index_name):
-#     """
-#
-#     Parameters
-#     ----------
-#     old_df
-#     new_df
-#     index_name
-#
-#     Returns
-#     -------
-#     concat_df : DataFrame
-#     new_df.index : Index
-#     """
-#     maxind = np.max(old_df.index.values)
-#     new_df = new_df.reset_index(drop=True)
-#     new_df.index = new_df.index + maxind + 1
-#     concat_df = pd.concat([old_df, new_df], verify_integrity=True)
-#     concat_df.index.name = index_name
-#     return concat_df, new_df.index
-
-
-def run_developer(forms, agents, buildings, supply_fname, feasibility,
-                  parcel_size, ave_unit_size, current_units, cfg,
-                  year=None,
-                  target_vacancy=0.1, form_to_btype_callback=None,
-                  add_more_columns_callback=None,
-                  remove_developed_buildings=True,
-                  unplace_agents=['households', 'jobs'],
-                  num_units_to_build=None, profit_to_prob_func=None,
-                  custom_selection_func=None):
-    cfg = misc.config(cfg)
-
-    target_units = (
-        num_units_to_build or
-        utils.compute_units_to_build(len(agents),
-                                     buildings[supply_fname].sum(),
-                                     target_vacancy))
-
-    dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
-                                      target_units, parcel_size,
-                                      ave_unit_size, current_units,
-                                      year, str_or_buffer=cfg)
-
-    print("{:,} feasible buildings before running developer".format(
-        len(dev.feasibility)))
-
-    new_buildings = dev.pick(profit_to_prob_func, custom_selection_func)
-    orca.add_table('new_buildings', new_buildings)
-    orca.add_table("feasibility", dev.feasibility)
-
-    if new_buildings is None:
-        return
-
-    if len(new_buildings) == 0:
-        return new_buildings
-
-    new_sites = (
-        process_new_buildings(dev.feasibility, buildings, new_buildings,
-                              form_to_btype_callback,
-                              add_more_columns_callback,
-                              supply_fname, remove_developed_buildings,
-                              unplace_agents))
-
-    # New stuff below
-
-    years_to_build = new_sites.construction_time // 12
-    current_year = orca.get_injectable('year')
-    new_sites['year_built'] = years_to_build + current_year
-
-    add_sites_orca('pipeline', 'dev_sites', new_sites)
-
-    return new_sites
-
-
-def process_new_buildings(feasibility, buildings, new_buildings,
-                          form_to_btype_callback,
-                          add_more_columns_callback,
-                          supply_fname, remove_developed_buildings,
-                          unplace_agents):
-    if form_to_btype_callback is not None:
-        new_buildings["building_type_id"] = new_buildings.apply(
-            form_to_btype_callback, axis=1)
-
-    if add_more_columns_callback is not None:
-        new_buildings = add_more_columns_callback(new_buildings)
-
-    print("Adding {:,} buildings with {:,} {}".format(
-        len(new_buildings),
-        int(new_buildings[supply_fname].sum()),
-        supply_fname))
-
-    print("{:,} feasible buildings after running developer".format(
-        len(feasibility)))
-
-    if remove_developed_buildings:
-        old_buildings = buildings.to_frame(buildings.local_columns)
-        old_buildings = utils._remove_developed_buildings(
-            old_buildings, new_buildings, unplace_agents)
-        orca.add_table('buildings', old_buildings)
-
-    return new_buildings
-
-
 def build_from_pipeline(pipeline, sites, buildings, year):
     """
 
@@ -522,7 +336,8 @@ def build_from_pipeline(pipeline, sites, buildings, year):
 
     # Build sites due to be built this year
     add_buildings = ds.drop('project_id', axis=1)
-    new_buildings = utils.merge_buildings(buildings, add_buildings)
+    add_buildings = get_new_ids(buildings, add_buildings, 'building_id')
+    new_buildings = pd.concat([buildings, add_buildings])
 
     # Mark pipeline with changes
     sites_built_per_project = ds.project_id.value_counts()

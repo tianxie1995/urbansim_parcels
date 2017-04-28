@@ -194,20 +194,11 @@ def feasibility(parcels,
 def feasibility_with_pipeline(parcels,
                               parcel_sales_price_sqft_func,
                               parcel_is_allowed_func):
-    pl.run_feasibility(parcels,
-                       parcel_sales_price_sqft_func,
-                       parcel_is_allowed_func,
-                       cfg='proforma.yaml')
-
-
-@orca.step('feasibility_large_parcels')
-def feasibility_large_parcels(parcels,
-                              parcel_sales_price_sqft_func,
-                              parcel_is_allowed_func):
-    pl.run_feasibility_large_parcels(parcels,
-                                     parcel_sales_price_sqft_func,
-                                     parcel_is_allowed_func,
-                                     cfg='proforma.yaml')
+    utils.run_feasibility(parcels,
+                          parcel_sales_price_sqft_func,
+                          parcel_is_allowed_func,
+                          pipeline=True,
+                          cfg='proforma.yaml')
 
 
 @orca.step('feasibility_with_occupancy')
@@ -259,7 +250,7 @@ def residential_developer(feasibility, households, buildings, parcels, year,
 def residential_developer_pipeline(feasibility, households, buildings, parcels,
                                    year, summary, form_to_btype_func,
                                    add_extra_columns_func):
-    new_buildings = pl.run_developer(
+    new_buildings = utils.run_developer(
         "residential",
         households,
         buildings,
@@ -271,7 +262,8 @@ def residential_developer_pipeline(feasibility, households, buildings, parcels,
         'res_developer.yaml',
         year=year,
         form_to_btype_callback=form_to_btype_func,
-        add_more_columns_callback=add_extra_columns_func)
+        add_more_columns_callback=add_extra_columns_func,
+        pipeline=True)
 
     summary.add_parcel_output(new_buildings)
 
@@ -324,7 +316,7 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
 def non_residential_developer_pipeline(feasibility, jobs, buildings, parcels,
                                        year, summary, form_to_btype_func,
                                        add_extra_columns_func):
-    new_buildings = pl.run_developer(
+    new_buildings = utils.run_developer(
         ["office", "retail", "industrial"],
         jobs,
         buildings,
@@ -337,7 +329,8 @@ def non_residential_developer_pipeline(feasibility, jobs, buildings, parcels,
         year=year,
         target_vacancy=.21,
         form_to_btype_callback=form_to_btype_func,
-        add_more_columns_callback=add_extra_columns_func)
+        add_more_columns_callback=add_extra_columns_func,
+        pipeline=True)
 
     summary.add_parcel_output(new_buildings)
 
