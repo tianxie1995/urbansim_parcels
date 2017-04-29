@@ -834,8 +834,10 @@ def add_buildings(feasibility, buildings, new_buildings,
         current_year = orca.get_injectable('year')
         new_buildings['year_built'] = ((new_buildings.construction_time // 12)
                                        + current_year)
+        new_buildings.drop('construction_time', axis=1, inplace=True)
         pl.add_sites_orca('pipeline', 'dev_sites', new_buildings, 'parcel_id')
     else:
+        new_buildings.drop('construction_time', axis=1, inplace=True)
         all_buildings = merge_buildings(old_buildings, new_buildings)
         orca.add_table("buildings", all_buildings)
 
