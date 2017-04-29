@@ -54,7 +54,7 @@ def new_sites():
 def test_get_new_index(sites, new_sites):
     df = pl.get_new_ids(sites, new_sites, 'site_id')
     assert df.index.name == 'site_id'
-    assert df.index.values.tolist() == range(5, 10)
+    assert df.index.values.tolist() == list(range(5, 10))
 
 
 def test_add_sites_single(pipeline, sites, new_sites):
@@ -63,8 +63,8 @@ def test_add_sites_single(pipeline, sites, new_sites):
         # treats new sites as single projects
         pl.add_sites(pipeline, sites, new_sites))
 
-    assert new_pipeline.index.values.tolist() == range(9)
-    assert new_sites.index.values.tolist() == range(10)
+    assert new_pipeline.index.values.tolist() == list(range(9))
+    assert new_sites.index.values.tolist() == list(range(10))
 
     assert new_sites.loc[5, 'project_id'] == 4
     assert new_sites.loc[8, 'project_id'] == 7
@@ -81,8 +81,8 @@ def test_add_sites_grouped(pipeline, sites, new_sites):
         # groups sites into projects
         pl.add_sites(pipeline, sites, new_sites, 'parcel_id'))
 
-    assert new_pipeline.index.values.tolist() == range(8)
-    assert new_sites.index.values.tolist() == range(10)
+    assert new_pipeline.index.values.tolist() == list(range(8))
+    assert new_sites.index.values.tolist() == list(range(10))
 
     assert new_sites.loc[5, 'project_id'] == 4
     assert new_sites.loc[8, 'project_id'] == 7
@@ -102,8 +102,8 @@ def test_add_sites_orca(pipeline, sites, new_sites):
     new_pipeline = orca.get_table('pipeline').to_frame()
     new_sites = orca.get_table('dev_sites').to_frame()
 
-    assert new_pipeline.index.values.tolist() == range(9)
-    assert new_sites.index.values.tolist() == range(10)
+    assert new_pipeline.index.values.tolist() == list(range(9))
+    assert new_sites.index.values.tolist() == list(range(10))
 
     assert new_sites.loc[5, 'project_id'] == 4
     assert new_sites.loc[8, 'project_id'] == 7
@@ -127,7 +127,7 @@ def test_build_from_pipeline(pipeline, sites, buildings):
 
     new_pipeline, new_sites, new_buildings = results
 
-    assert new_buildings.index.values.tolist() == range(60, 66)
+    assert new_buildings.index.values.tolist() == list(range(60, 66))
     assert new_buildings.year_built.unique().max() <= 2012
     assert new_sites.index.values.tolist() == [2, 4]
     assert new_pipeline.index.values.tolist() == [2, 3]
@@ -156,7 +156,7 @@ def test_build_from_pipeline_orca(pipeline, sites, buildings):
     new_buildings = orca.get_table('buildings').to_frame()
 
     # Same assertions as above
-    assert new_buildings.index.values.tolist() == range(60, 66)
+    assert new_buildings.index.values.tolist() == list(range(60, 66))
     assert new_buildings.year_built.unique().max() <= 2012
     assert new_sites.index.values.tolist() == [2, 4]
     assert new_pipeline.index.values.tolist() == [2, 3]
