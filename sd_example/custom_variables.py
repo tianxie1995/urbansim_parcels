@@ -625,11 +625,13 @@ def parcel_average_price(use):
 
 
 @orca.injectable('parcel_occupancy_func', autocall=False)
-def parcel_average_occupancy(use):
-    occ_var = 'occ_{}'.format(use)
-    nodes = orca.get_table('nodes').to_frame([occ_var])
-    return misc.reindex(nodes[occ_var],
-                        orca.get_table('parcels').node_id)
+def parcel_average_occupancy(df, pf):
+    for use in pf.uses:
+        occ_var = 'occ_{}'.format(use)
+        nodes = orca.get_table('nodes').to_frame([occ_var])
+        df[occ_var] = misc.reindex(nodes[occ_var],
+                                   orca.get_table('parcels').node_id)
+    return df
 
 
 @orca.column('parcels', 'max_dua', cache=True)

@@ -654,8 +654,8 @@ def building_occupancy(oldest_year=None):
     return buildings
 
 
-def apply_parcel_callbacks(parcels, parcel_price_callback,
-                           pf, parcel_custom_callback=None):
+def apply_parcel_callbacks(parcels, parcel_price_callback, pf,
+                           parcel_custom_callback=None, **kwargs):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -677,8 +677,6 @@ def apply_parcel_callbacks(parcels, parcel_price_callback,
     -------
     DataFrame of parcels
     """
-
-    # df = parcels.to_frame()
 
     if pf.parcel_filter:
         parcels = parcels.query(pf.parcel_filter)

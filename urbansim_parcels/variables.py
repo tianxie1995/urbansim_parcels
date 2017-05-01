@@ -40,29 +40,35 @@ def random_type(row):
 
 
 @orca.injectable('parcel_occupancy_func', autocall=False)
-def parcel_average_occupancy(use):
-    buildings = orca.get_table('building_occupancy').to_frame(
-        ['zone_id', 'parcel_id', 'occupancy_res', 'occupancy_nonres'])
+def parcel_average_occupancy(df, pf):
 
-    occ_col = 'occupancy_res' if use == 'residential' else 'occupancy_nonres'
+    for use in pf.uses:
+        buildings = orca.get_table('building_occupancy').to_frame(
+            ['zone_id', 'parcel_id', 'occupancy_res', 'occupancy_nonres'])
 
-    # Series of average occupancy indexed by zone
-    occupancy_by_zone = (buildings[['zone_id', occ_col]]
-                         .groupby('zone_id')
-                         .agg('mean')
-                         [occ_col])
+        occ_col = ('occupancy_res' if use == 'residential'
+                   else 'occupancy_nonres')
 
-    # Add series above to buildings table
-    buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
-                                                buildings.zone_id)
+        # Series of average occupancy indexed by zone
+        occupancy_by_zone = (buildings[['zone_id', occ_col]]
+                             .groupby('zone_id')
+                             .agg('mean')
+                             [occ_col])
 
-    # Group buildings table to parcels
-    parcel_occupancy = (buildings[['zonal_occupancy', 'parcel_id']]
-                        .groupby('parcel_id')
-                        .agg('mean')
-                        .zonal_occupancy)
+        # Add series above to buildings table
+        buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
+                                                    buildings.zone_id)
 
-    return parcel_occupancy
+        # Group buildings table to parcels
+        parcel_occupancy = (buildings[['zonal_occupancy', 'parcel_id']]
+                            .groupby('parcel_id')
+                            .agg('mean')
+                            .zonal_occupancy)
+
+        occ_var = 'occ_{}'.format(use)
+        df[occ_var] = parcel_occupancy
+
+    return df
 
 
 @orca.injectable('modify_df_occupancy', autocall=False)

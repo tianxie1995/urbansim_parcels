@@ -212,7 +212,6 @@ def feasibility_with_occupancy(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
                           parcel_occupancy_func,
-                          start_year=orca.get_injectable('start_year'),
                           cfg='proforma.yaml',
                           modify_df=modify_df_occupancy,
                           modify_revenues=modify_revenues_occupancy)

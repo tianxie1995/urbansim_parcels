@@ -111,6 +111,21 @@ def parcels(store):
     return df
 
 
+@orca.table('dev_sites', cache=True)
+def dev_sites():
+    df = pd.DataFrame(columns=['project_id', 'pipeline_id', 'parcel_id'])
+    df.index.name = 'site_id'
+    return df
+
+
+@orca.table('pipeline', cache=True)
+def pipeline():
+    df = pd.DataFrame(columns=['completion_year', 'sites',
+                               'sites_active', 'sites_built'])
+    df.index.name = 'project_id'
+    return df
+
+
 # these are shapes - "zones" in the bay area
 @orca.table('zones', cache=True)
 def zones(store):
