@@ -60,6 +60,7 @@ def building_sqft_per_job(settings):
 @orca.table('buildings', cache=True)
 def buildings(store):
     df = store['buildings']
+    df.index.name = 'building_id'
     return df
 
 

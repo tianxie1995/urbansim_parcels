@@ -244,9 +244,9 @@ def is_retail(buildings):
 
 
 @orca.column('buildings', 'job_spaces', cache=True, cache_scope='iteration')
-def job_spaces():
+def job_spaces(buildings):
     store = orca.get_injectable('store')
-    b = orca.get_table('buildings').to_frame(
+    b = buildings.to_frame(
         ['luz_id', 'development_type_id', 'non_residential_sqft',
          'year_built'])
     bsqft_job = store['building_sqft_per_job']

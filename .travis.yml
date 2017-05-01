@@ -32,7 +32,8 @@ script:
 - pycodestyle sd_example
 - py.test
 - cd $TRAVIS_BUILD_DIR/sf_example && python simulate.py
-#- python simulate_occupancy.py
+- python simulate_occupancy.py
+- python simulate_pipeline.py
 - cd $TRAVIS_BUILD_DIR/sd_example && python Simulation.py
-#- python Simulation_occupancy.py
+- python Simulation_occupancy.py
 - python Simulation_pipeline.py

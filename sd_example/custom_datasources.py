@@ -152,6 +152,8 @@ def buildings(store):
     df = store['buildings']
     df['res_price_per_sqft'] = 0.0
     df['nonres_rent_per_sqft'] = 0.0
+    # TODO figure out a long term solution to this
+    df.index.name = 'building_id'
     # For testing HLCM luz supply constraints only
     # df.residential_units = df.residential_units*2
     return df
