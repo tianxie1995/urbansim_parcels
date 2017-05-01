@@ -105,6 +105,22 @@ def nodes():
     return pd.DataFrame()
 
 
+@orca.table('dev_sites', cache=True)
+def dev_sites():
+    df = pd.DataFrame(columns=['project_id', 'pipeline_id', 'parcel_id',
+                               'year_built'])
+    df.index.name = 'site_id'
+    return df
+
+
+@orca.table('pipeline', cache=True)
+def pipeline():
+    df = pd.DataFrame(columns=['completion_year', 'sites',
+                               'sites_active', 'sites_built'])
+    df.index.name = 'project_id'
+    return df
+
+
 # this specifies the relationships between tables
 orca.broadcast('nodes', 'buildings', cast_index=True, onto_on='node_id')
 orca.broadcast('nodes', 'parcels', cast_index=True, onto_on='node_id')
