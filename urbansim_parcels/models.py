@@ -201,6 +201,19 @@ def feasibility_with_pipeline(parcels,
                           cfg='proforma.yaml')
 
 
+@orca.step('feasibility_large_parcels')
+def feasibility_large_parcels(parcels,
+                              parcel_sales_price_sqft_func,
+                              parcel_is_allowed_func,
+                              large_parcel_split_func):
+    utils.run_feasibility(parcels,
+                          parcel_sales_price_sqft_func,
+                          parcel_is_allowed_func,
+                          cfg='proforma_split.yaml',
+                          parcel_id_col='parcel_id',
+                          parcel_custom_callback=large_parcel_split_func)
+
+
 @orca.step('feasibility_with_occupancy')
 def feasibility_with_occupancy(parcels,
                                parcel_sales_price_sqft_func,
@@ -223,6 +236,49 @@ def add_extra_columns(df):
                 'residential_sales_price', 'non_residential_rent']:
         df[col] = 0
     return df
+
+
+@orca.step('developer_large_parcels')
+def developer_large_parcels(feasibility, households, jobs, buildings, parcels,
+                            year, summary, form_to_btype_func,
+                            add_extra_columns_func,
+                            large_parcel_selection_func):
+    new_res = utils.run_developer(
+        "residential",
+        households,
+        buildings,
+        'residential_units',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_residential_units,
+        'res_developer.yaml',
+        year=year,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        custom_selection_func=large_parcel_selection_func,
+        pipeline=True)
+
+    summary.add_parcel_output(new_res)
+
+    new_nonres = utils.run_developer(
+        ["office", "retail", "industrial"],
+        jobs,
+        buildings,
+        'job_spaces',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_job_spaces,
+        'nonres_developer.yaml',
+        year=year,
+        target_vacancy=.21,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        custom_selection_func=large_parcel_selection_func,
+        pipeline=True)
+
+    summary.add_parcel_output(new_nonres)
 
 
 @orca.step('residential_developer')

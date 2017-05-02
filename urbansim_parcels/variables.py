@@ -9,6 +9,7 @@ from urbansim.utils import networks
 
 from urbansim_parcels import datasources
 from urbansim_parcels import utils
+from urbansim_parcels import pipeline_utils as pl
 
 
 #####################
@@ -69,6 +70,27 @@ def parcel_average_occupancy(df, pf):
         df[occ_var] = parcel_occupancy
 
     return df
+
+
+@orca.injectable('large_parcel_split_func', autocall=False)
+def split_constant_size(df, pf):
+    """
+    Passed to parcel_custom_callback in run_feasibility.
+    """
+    df = df.loc[(df.parcel_size > 200000) & (df.parcel_size < 500000)]
+    df = pl.split_by_size(df, 'parcel_size', 'land_cost', 10000)
+    return df
+
+
+@orca.injectable('large_parcel_selection_func', autocall=False)
+def large_parcel_selection_func(self, df, p):
+    grouped_profit = df.groupby('parcel_id').agg('sum')
+    profitable_parcels = (grouped_profit
+                          .loc[grouped_profit.max_profit > 1000000]
+                          .index.values)
+    sites = df.loc[df.parcel_id.isin(profitable_parcels)]
+    build_idx = sites.index.values
+    return build_idx
 
 
 @orca.injectable('modify_df_occupancy', autocall=False)

@@ -694,7 +694,8 @@ def apply_parcel_callbacks(parcels, parcel_price_callback, pf,
     return parcels
 
 
-def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
+def lookup_by_form(df, parcel_use_allowed_callback, pf,
+                   parcel_id_col=None, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -705,8 +706,12 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     parcel_use_allowed_callback : func
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
-    pf: SqFtProForma object
+    pf : SqFtProForma object
         Pro forma object with relevant configurations
+    parcel_id_col : str
+        Name of column with unique parcel identifier, in the case that df is
+        not at parcel level (e.g. has been split into smaller sites). This
+        allows the parcel_use_allowed_callback function to still work.
 
     Returns
     -------
@@ -718,9 +723,14 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     forms = pf.forms_to_test or pf.forms
     for form in forms:
         print("Computing feasibility for form %s" % form)
-        allowed = parcel_use_allowed_callback(form).loc[df.index]
 
-        newdf = df[allowed]
+        if parcel_id_col is not None:
+            parcels = df[parcel_id_col].unique()
+            allowed = (parcel_use_allowed_callback(form).loc[parcels])
+            newdf = df.loc[misc.reindex(allowed, df.parcel_id)]
+        else:
+            allowed = parcel_use_allowed_callback(form).loc[df.index]
+            newdf = df[allowed]
 
         lookup_results[form] = pf.lookup(form, newdf, **kwargs)
 
@@ -802,6 +812,24 @@ def add_buildings(feasibility, buildings, new_buildings,
                   form_to_btype_callback, add_more_columns_callback,
                   supply_fname, remove_developed_buildings, unplace_agents,
                   pipeline=False):
+    """
+
+    Parameters
+    ----------
+    feasibility
+    buildings
+    new_buildings
+    form_to_btype_callback
+    add_more_columns_callback
+    supply_fname
+    remove_developed_buildings
+    unplace_agents
+    pipeline
+
+    Returns
+    -------
+
+    """
 
     if form_to_btype_callback is not None:
         new_buildings["building_type_id"] = new_buildings.apply(
@@ -966,18 +994,21 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         For all tables in the list, will look for field building_id and set
         it to -1 for buildings which are removed - only executed if
         remove_developed_buildings is true
-    num_units_to_build: optional, int
+    num_units_to_build : optional, int
         If num_units_to_build is passed, build this many units rather than
         computing it internally by using the length of agents adn the sum of
         the relevant supply columin - this trusts the caller to know how to
         compute this.
-    profit_to_prob_func: func
+    profit_to_prob_func : func
         Passed directly to dev.pick
-    custom_selection_func: func
+    custom_selection_func : func
         User passed function that decides how to select buildings for
         development after probabilities are calculated. Must have
         parameters (self, df, p) and return a numpy array of buildings to
         build (i.e. df.index.values)
+    pipeline : bool
+        Passed to add_buildings
+
 
     Returns
     -------
@@ -1004,9 +1035,6 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
 
     if new_buildings is None or len(new_buildings) == 0:
         return
-    #
-    # if len(new_buildings) == 0:
-    #     return new_buildings
 
     new_buildings = add_buildings(dev.feasibility, buildings, new_buildings,
                                   form_to_btype_callback,

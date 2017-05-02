@@ -119,11 +119,19 @@ def add_sites_orca(pipeline_name, sites_name, new_sites,
 
 def remove_pipelined_sites(parcels):
     """
-    This has to load the parcel table and remove those already involved
-    in pipeline projects
+    Removes parcels associated with development sites currently in the
+    pipeline.
 
+    Parameters
+    ----------
+    parcels : DataFrameWrapper
+        Orca DataFrameWrapper for parcel table. Parcels must be indexed by
+        parcel_id
+
+    Returns
+    -------
+    new_sites : DataFrame
     """
-
     # Read current dev sites and pipeline
     ds = orca.get_table('dev_sites').to_frame()
     parcels_in_pipeline = ds.parcel_id.unique()
@@ -141,105 +149,31 @@ def remove_pipelined_sites(parcels):
     return new_sites
 
 
-def _create_large_projects(parcels, cfg, parcel_price_callback,
-                           parcel_occupancy_callback, start_year,
-                           parcel_use_allowed_callback, **kwargs):
-    # Read current dev sites and pipeline
-    ds = orca.get_table('dev_sites').to_frame()
-    sites_in_pipeline = ds.loc[orca.get_injectable('sites_in_pipeline')]
-    parcel_ids_in_pipeline = sites_in_pipeline.parcel_id
-    candidate_sites = parcels.to_frame().copy()
+def split_evenly(df, area_col, other_split_cols, num_splits):
+    """
+    Example parcel splitting utility function. Splits parcel into equal
+    sizes.
 
-    print('{} parcels before removing those already in pipeline'
-          .format(len(candidate_sites)))
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame of parcels to split
+    area_col : str
+        Name of column that contains land area to split
+    other_split_cols : str or list
+        Name(s) of other columns to split (like land cost)
+    num_splits : int
+        Number of splits to create
 
-    # Remove parcels in the pipeline
-    candidate_sites = (candidate_sites.loc
-                       [~candidate_sites.index.isin(parcel_ids_in_pipeline)])
+    Returns
+    -------
+    split_df : DataFrame
+        DataFrame of sites split from parcel, with a new index and
+        parcel_id included as a column
 
-    print('{} parcels before split'
-          .format(len(candidate_sites)))
-
-    # TODO Read in user configs
-
-    # TODO Split parcels
-    upperbound = 1000000 / 43560
-    lowerbound = 200000 / 43560
-
-    large_sites = (candidate_sites.
-                   loc[(candidate_sites.parcel_acres > lowerbound)
-                       & (candidate_sites.parcel_acres < upperbound)])
-
-    sites = (candidate_sites
-             .loc[~candidate_sites.index.isin(large_sites.index.values)])
-
-    print('{} large sites removed'.format(len(large_sites)))
-    print('{} sites remaining'.format(len(sites)))
-
-    area_col = 'parcel_acres'
-    other_split_cols = ['land_cost']
-    splits = 10
-    size = 0.25
-    # split_sites = _split_evenly(large_sites, area_col,
-    #                             other_split_cols, splits)
-    split_sites = _split_by_size(large_sites, area_col,
-                                 other_split_cols, size)
-
-    print('{} split sites ready for feasibility'.format(len(split_sites)))
-
-    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
-          else sqftproforma.SqFtProForma.from_defaults())
-    pf.pass_through = ['parcel_id']
-    df = prepare_parcels_for_feasibility(split_sites, parcel_price_callback,
-                                         pf, parcel_occupancy_callback,
-                                         start_year)
-
-    # lookup_by_form
-    lookup_results = {}
-
-    forms = pf.forms_to_test or pf.forms
-    for form in forms:
-        print("Computing feasibility for form %s" % form)
-        allowed = parcel_use_allowed_callback(form).loc[df.parcel_id.unique()]
-
-        newdf = df.loc[misc.reindex(allowed, df.parcel_id)]
-
-        lookup_results[form] = pf.lookup(form, newdf, **kwargs)
-
-    feasibility = pd.concat(lookup_results.values(),
-                            keys=lookup_results.keys(),
-                            axis=1)
-
-    orca.add_table('split_feasibility', feasibility)
-
-    res = feasibility['residential']
-    # build any with combined profit > $500,000
-    grouped_profit = res.groupby('parcel_id').agg('sum')
-    profitable_parcels = (grouped_profit
-                          .loc[grouped_profit.max_profit > 1000000]
-                          .index.values)
-
-    # Construction time
-    # Just figure out year built for each site
-
-    year = orca.get_injectable('year')
-    for parcel in profitable_parcels:
-        sites_in_proj = res.loc[res.parcel_id == parcel].index
-        # Randomly add between 0 and 3 months to home construction
-        add_months = np.random.randint(0, 3, len(sites_in_proj))
-        res.loc[sites_in_proj, 'construction_time_mod'] = (
-            res.loc[sites_in_proj, 'construction_time'] + add_months)
-
-        res.loc[sites_in_proj, 'year_built'] = (
-            res.loc[sites_in_proj, 'construction_time_mod'] // 12 + year)
-    # What about existing buildings?
-
-    add_sites_orca('pipeline', 'dev_sites', res, 'parcel_id')
-
-    return sites
-
-
-def _split_evenly(df, area_col, other_split_cols, num_splits):
+    """
+    if not isinstance(other_split_cols, list):
+        other_split_cols = [other_split_cols]
     split_cols = [area_col] + other_split_cols
 
     repeated_index = np.repeat(df.index.values, num_splits)
@@ -252,7 +186,30 @@ def _split_evenly(df, area_col, other_split_cols, num_splits):
     return split_df
 
 
-def _split_by_size(df, area_col, other_split_cols, size):
+def split_by_size(df, area_col, other_split_cols, size):
+    """
+    Example parcel splitting utility function. Splits parcel into sites of
+    defined sizes. There may be unused area left over from the split.
+
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame of parcels to split
+    area_col : str
+        Name of column that contains land area to split
+    other_split_cols : str or list
+        Name(s) of other columns to split (like land cost)
+    size : numeric
+        Size of split sites, in units of area_col
+
+    Returns
+    -------
+    split_df : DataFrame
+        DataFrame of sites split from parcel, with a new index and
+        parcel_id included as a column
+    """
+    if not isinstance(other_split_cols, list):
+        other_split_cols = [other_split_cols]
     split_cols = [area_col] + other_split_cols
 
     df['sites_available'] = (df[area_col] // size).astype(int)
@@ -265,54 +222,6 @@ def _split_by_size(df, area_col, other_split_cols, size):
     for col in split_cols:
         split_df[col] = split_df[col] / split_df.sites_available
     return split_df
-
-
-def prepare_parcels_for_feasibility(sites, parcel_price_callback,
-                                    pf, parcel_occupancy_callback=None,
-                                    start_year=None):
-    """
-    Prepare parcel DataFrame for feasibility analysis
-
-    Parameters
-    ----------
-    sites : DataFrame
-        DataFrame of development sites
-    parcel_price_callback : func
-        A callback which takes each use of the pro forma and returns a series
-        with index as parcel_id and value as yearly_rent
-    pf: SqFtProForma object
-        Pro forma object with relevant configurations
-    parcel_occupancy_callback : func
-        A callback which takes each use of the pro forma, along with a start
-        year, and returns series with index as parcel_id and value as
-        expected occupancy
-    start_year : int
-        Year to begin tracking occupancy
-
-    Returns
-    -------
-    DataFrame of parcels
-    """
-
-    if pf.parcel_filter:
-        sites = sites.query(pf.parcel_filter)
-
-    current_year = orca.get_injectable('year')
-
-    for use in pf.uses:
-        # Add prices
-        sites[use] = parcel_price_callback(use)
-
-        # Add occupancies
-        if start_year and current_year >= start_year:
-            occ_col = 'occ_{}'.format(use)
-            sites[occ_col] = parcel_occupancy_callback(use)
-
-    # convert from cost to yearly rent
-    if pf.residential_to_yearly and 'residential' in sites.columns:
-        sites["residential"] *= pf.cap_rate
-
-    return sites
 
 
 def build_from_pipeline(pipeline, sites, buildings, year):
@@ -335,7 +244,7 @@ def build_from_pipeline(pipeline, sites, buildings, year):
     ds = sites.loc[sites.year_built == year]
 
     # Build sites due to be built this year
-    add_buildings = ds.drop('project_id', axis=1)
+    add_buildings = ds[buildings.columns]
     add_buildings = get_new_ids(buildings, add_buildings, 'building_id')
     new_buildings = pd.concat([buildings, add_buildings])
 
@@ -370,10 +279,12 @@ def build_from_pipeline_orca(pipeline_name, sites_name, buildings_name,
     year_name : str
         Name of year injectable in Orca
     """
-    table_names = [pipeline_name, sites_name, buildings_name]
+    pipeline = orca.get_table(pipeline_name).to_frame()
+    sites = orca.get_table(sites_name).to_frame()
 
-    pipeline, sites, buildings = (orca.get_table(name).to_frame()
-                                  for name in table_names)
+    buildings = orca.get_table(buildings_name)
+    buildings = buildings.to_frame(buildings.local_columns)
+
     year = orca.get_injectable(year_name)
 
     results = build_from_pipeline(pipeline, sites, buildings, year)
