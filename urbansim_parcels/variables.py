@@ -9,6 +9,7 @@ from urbansim.utils import networks
 
 from urbansim_parcels import datasources
 from urbansim_parcels import utils
+from urbansim_parcels import pipeline_utils as pl
 
 
 #####################
@@ -40,29 +41,62 @@ def random_type(row):
 
 
 @orca.injectable('parcel_occupancy_func', autocall=False)
-def parcel_average_occupancy(use):
-    buildings = orca.get_table('building_occupancy').to_frame(
-        ['zone_id', 'parcel_id', 'occupancy_res', 'occupancy_nonres'])
+def parcel_average_occupancy(df, pf):
+    """
+    Passed to parcel_custom_callback in run_feasibility.
+    """
 
-    occ_col = 'occupancy_res' if use == 'residential' else 'occupancy_nonres'
+    for use in pf.uses:
+        buildings = orca.get_table('building_occupancy').to_frame(
+            ['zone_id', 'parcel_id', 'occupancy_res', 'occupancy_nonres'])
 
-    # Series of average occupancy indexed by zone
-    occupancy_by_zone = (buildings[['zone_id', occ_col]]
-                         .groupby('zone_id')
-                         .agg('mean')
-                         [occ_col])
+        occ_col = ('occupancy_res' if use == 'residential'
+                   else 'occupancy_nonres')
 
-    # Add series above to buildings table
-    buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
-                                                buildings.zone_id)
+        # Series of average occupancy indexed by zone
+        occupancy_by_zone = (buildings[['zone_id', occ_col]]
+                             .groupby('zone_id')
+                             .agg('mean')
+                             [occ_col])
 
-    # Group buildings table to parcels
-    parcel_occupancy = (buildings[['zonal_occupancy', 'parcel_id']]
-                        .groupby('parcel_id')
-                        .agg('mean')
-                        .zonal_occupancy)
+        # Add series above to buildings table
+        buildings['zonal_occupancy'] = misc.reindex(occupancy_by_zone,
+                                                    buildings.zone_id)
 
-    return parcel_occupancy
+        # Group buildings table to parcels
+        parcel_occupancy = (buildings[['zonal_occupancy', 'parcel_id']]
+                            .groupby('parcel_id')
+                            .agg('mean')
+                            .zonal_occupancy)
+
+        occ_var = 'occ_{}'.format(use)
+        df[occ_var] = parcel_occupancy
+
+    return df
+
+
+@orca.injectable('large_parcel_split_func', autocall=False)
+def split_constant_size(df, pf):
+    """
+    Passed to parcel_custom_callback in run_feasibility.
+    """
+    df = df.loc[(df.parcel_size > 200000) & (df.parcel_size < 500000)]
+    df = pl.split_by_size(df, 'parcel_size', 'land_cost', 10000)
+    return df
+
+
+@orca.injectable('large_parcel_selection_func', autocall=False)
+def large_parcel_selection_func(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
+    grouped_profit = df.groupby('parcel_id').agg('sum')
+    profitable_parcels = (grouped_profit
+                          .loc[grouped_profit.max_profit > 1000000]
+                          .index.values)
+    sites = df.loc[df.parcel_id.isin(profitable_parcels)]
+    build_idx = sites.index.values
+    return build_idx
 
 
 @orca.injectable('modify_df_occupancy', autocall=False)
@@ -101,6 +135,9 @@ def modify_revenues_occupancy(self, form, df, revenues):
 
 @orca.injectable('res_selection', autocall=False)
 def res_selection(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     min_profit_per_sqft = 20
     print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
           .format(min_profit_per_sqft))
@@ -111,6 +148,9 @@ def res_selection(self, df, p):
 
 @orca.injectable('nonres_selection', autocall=False)
 def nonres_selection(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     min_profit_per_sqft = 10
     print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
           .format(min_profit_per_sqft))
@@ -121,6 +161,9 @@ def nonres_selection(self, df, p):
 
 @orca.injectable('custom_selection', autocall=False)
 def custom_selection(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     profit_cost_ratio = .10
     minimum_profit = 100000
     print("BUILDING ALL BUILDINGS WITH PROFIT TO COST RATIO > {:.0f}%"

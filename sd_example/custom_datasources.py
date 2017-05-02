@@ -39,8 +39,6 @@ def jobs(store):
 @orca.table('travel_data', cache=True)
 def travel_data(store):
     df = store['travel_data']
-    # Some bytes types in python 3
-    # df = utils.decode_byte_df(df)
     return df
 
 
@@ -66,6 +64,31 @@ def parcel_fee_schedule(store):
 @orca.table('zoning', cache=True)
 def zoning(store):
     df = store['zoning']
+    return df
+
+
+@orca.table('dev_sites', cache=True)
+def dev_sites(store):
+    sde = store['scheduled_development_events']
+    removals = ['scheduled_development_event_id', 'note']
+    cols = [c for c in sde.columns if c not in removals]
+    df = sde[cols].reset_index(drop=True)
+    df['project_id'] = df.index.values
+    df['residential_sqft'] = (df.sqft_per_unit
+                              * df.residential_units)
+    df['job_spaces'] = df.non_residential_sqft / 400
+    df.index.name = 'site_id'
+    return df
+
+
+@orca.table('pipeline', cache=True)
+def pipeline(dev_sites):
+    df = pd.DataFrame(index=dev_sites.index.values)
+    df.index.name = 'project_id'
+    df['completion_year'] = dev_sites.year_built
+    df['sites'] = 1
+    df['sites_active'] = 1
+    df['sites_built'] = 0
     return df
 
 
@@ -126,6 +149,8 @@ def buildings(store):
     df = store['buildings']
     df['res_price_per_sqft'] = 0.0
     df['nonres_rent_per_sqft'] = 0.0
+    # TODO figure out a long term solution to this
+    df.index.name = 'building_id'
     # For testing HLCM luz supply constraints only
     # df.residential_units = df.residential_units*2
     return df

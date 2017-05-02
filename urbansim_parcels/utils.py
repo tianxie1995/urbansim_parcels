@@ -15,6 +15,7 @@ from urbansim.models.supplydemand import supply_and_demand
 from developer import sqftproforma
 from developer import develop
 from urbansim.utils import misc
+from . import pipeline_utils as pl
 
 
 def conditional_upzone(scenario, scenario_inputs, attr_name, upzone_name):
@@ -653,9 +654,8 @@ def building_occupancy(oldest_year=None):
     return buildings
 
 
-def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
-                                    pf, parcel_occupancy_callback=None,
-                                    start_year=None):
+def apply_parcel_callbacks(parcels, parcel_price_callback, pf,
+                           parcel_custom_callback=None, **kwargs):
     """
     Prepare parcel DataFrame for feasibility analysis
 
@@ -668,42 +668,34 @@ def prepare_parcels_for_feasibility(parcels, parcel_price_callback,
         with index as parcel_id and value as yearly_rent
     pf: SqFtProForma object
         Pro forma object with relevant configurations
-    parcel_occupancy_callback : func
-        A callback which takes each use of the pro forma, along with a start
-        year, and returns series with index as parcel_id and value as
-        expected occupancy
-    start_year : int
-        Year to begin tracking occupancy
+    parcel_custom_callback : func, optional
+        A callback which modifies the parcel DataFrame. Must take
+        (df, pf) as arguments where df is parcel DataFrame and pf is
+        SqFtProForma object
 
     Returns
     -------
     DataFrame of parcels
     """
 
-    df = parcels.to_frame()
-
     if pf.parcel_filter:
-        df = df.query(pf.parcel_filter)
-
-    current_year = orca.get_injectable('year')
+        parcels = parcels.query(pf.parcel_filter)
 
     for use in pf.uses:
-        # Add prices
-        df[use] = parcel_price_callback(use)
+        parcels[use] = parcel_price_callback(use)
 
-        # Add occupancies
-        if start_year and current_year >= start_year:
-            occ_col = 'occ_{}'.format(use)
-            df[occ_col] = parcel_occupancy_callback(use)
+    if parcel_custom_callback is not None:
+        parcels = parcel_custom_callback(parcels, pf)
 
     # convert from cost to yearly rent
-    if pf.residential_to_yearly and 'residential' in df.columns:
-        df["residential"] *= pf.cap_rate
+    if pf.residential_to_yearly and 'residential' in parcels.columns:
+        parcels["residential"] *= pf.cap_rate
 
-    return df
+    return parcels
 
 
-def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
+def lookup_by_form(df, parcel_use_allowed_callback, pf,
+                   parcel_id_col=None, **kwargs):
     """
     Execute development feasibility on all parcels
 
@@ -714,8 +706,12 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     parcel_use_allowed_callback : func
         A callback which takes each use of the pro forma and returns a series
         with index as parcel_id and value as yearly_rent
-    pf: SqFtProForma object
+    pf : SqFtProForma object
         Pro forma object with relevant configurations
+    parcel_id_col : str
+        Name of column with unique parcel identifier, in the case that df is
+        not at parcel level (e.g. has been split into smaller sites). This
+        allows the parcel_use_allowed_callback function to still work.
 
     Returns
     -------
@@ -727,9 +723,14 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
     forms = pf.forms_to_test or pf.forms
     for form in forms:
         print("Computing feasibility for form %s" % form)
-        allowed = parcel_use_allowed_callback(form).loc[df.index]
 
-        newdf = df[allowed]
+        if parcel_id_col is not None:
+            parcels = df[parcel_id_col].unique()
+            allowed = (parcel_use_allowed_callback(form).loc[parcels])
+            newdf = df.loc[misc.reindex(allowed, df.parcel_id)]
+        else:
+            allowed = parcel_use_allowed_callback(form).loc[df.index]
+            newdf = df[allowed]
 
         lookup_results[form] = pf.lookup(form, newdf, **kwargs)
 
@@ -741,11 +742,10 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs):
 
 
 def run_feasibility(parcels, parcel_price_callback,
-                    parcel_use_allowed_callback,
-                    parcel_occupancy_callback=None, start_year=None,
+                    parcel_use_allowed_callback, pipeline=False,
                     cfg=None, **kwargs):
     """
-    Execute development feasibility on all parcels
+    Execute development feasibility on all development sites
 
     Parameters
     ----------
@@ -758,26 +758,22 @@ def run_feasibility(parcels, parcel_price_callback,
         A callback which takes each form of the pro forma and returns a series
         with index as parcel_id and value and boolean whether the form
         is allowed on the parcel
-    parcel_occupancy_callback : function
-        A callback which takes each use of the pro forma, along with a start
-        year, and returns series with index as parcel_id and value as
-        expected occupancy
-    start_year : int
-        Year to start tracking occupancy
-    cfg : str
+    pipeline : bool, optional
+        If True, removes parcels from consideration if already in dev_sites
+        table
+    cfg : str, optional
         The name of the yaml file to read pro forma configurations from
-
-    Returns
-    -------
-    Adds a table called feasibility to the sim object (returns nothing)
     """
 
     cfg = misc.config(cfg)
-    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg) if cfg
-          else sqftproforma.SqFtProForma.from_defaults())
-    df = prepare_parcels_for_feasibility(parcels, parcel_price_callback,
-                                         pf, parcel_occupancy_callback,
-                                         start_year)
+
+    pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg)
+          if cfg else sqftproforma.SqFtProForma.from_defaults())
+    sites = (pl.remove_pipelined_sites(parcels) if pipeline
+             else parcels.to_frame())
+    df = apply_parcel_callbacks(sites, parcel_price_callback,
+                                pf, **kwargs)
+
     feasibility = lookup_by_form(df, parcel_use_allowed_callback, pf, **kwargs)
     orca.add_table('feasibility', feasibility)
 
@@ -803,27 +799,57 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     for tbl in unplace_agents:
         agents = orca.get_table(tbl).local
         displaced_agents = agents.building_id.isin(drop_buildings.index)
-        print("Unplaced {} before: {}".format(tbl,
-                                              len(agents.query(
-                                                  "building_id == -1"))))
+        print("Unplaced {} before: {}"
+              .format(tbl, len(agents.query("building_id == -1"))))
         agents.building_id[displaced_agents] = -1
-        print("Unplaced {} after: {}".format(tbl,
-                                             len(agents.query(
-                                                 "building_id == -1"))))
+        print("Unplaced {} after: {}"
+              .format(tbl, len(agents.query("building_id == -1"))))
 
     return old_buildings
 
 
-def process_new_buildings(feasibility, buildings, new_buildings,
-                          form_to_btype_callback,
-                          add_more_columns_callback,
-                          supply_fname, remove_developed_buildings,
-                          unplace_agents):
+def add_buildings(feasibility, buildings, new_buildings,
+                  form_to_btype_callback, add_more_columns_callback,
+                  supply_fname, remove_developed_buildings, unplace_agents,
+                  pipeline=False):
+    """
+
+    Parameters
+    ----------
+    feasibility : DataFrame
+        Results from SqFtProForma lookup() method
+    buildings : DataFrameWrapper
+        Wrapper for current buildings table
+    new_buildings : DataFrame
+        DataFrame of selected buildings to build or add to pipeline
+    form_to_btype_callback : func
+        Callback function to assign forms to building types
+    add_more_columns_callback : func
+        Callback function to add columns to new_buildings table; this is
+        useful for making sure new_buildings table has all required columns
+        from the buildings table
+    supply_fname : str
+        Name of supply column for this type (e.g. units or job spaces)
+    remove_developed_buildings : bool
+        Remove all buildings on the parcels which are being developed on
+    unplace_agents : list of strings
+        For all tables in the list, will look for field building_id and set
+        it to -1 for buildings which are removed - only executed if
+        remove_developed_buildings is true
+    pipeline : bool
+        If True, will add new buildings to dev_sites table and pipeline rather
+        than directly to buildings table
+
+    Returns
+    -------
+    new_buildings : DataFrame
+    """
+
     if form_to_btype_callback is not None:
         new_buildings["building_type_id"] = new_buildings.apply(
             form_to_btype_callback, axis=1)
 
-    ret_buildings = new_buildings
+    # This is where year_built gets assigned
     if add_more_columns_callback is not None:
         new_buildings = add_more_columns_callback(new_buildings)
 
@@ -835,52 +861,27 @@ def process_new_buildings(feasibility, buildings, new_buildings,
     print("{:,} feasible buildings after running developer".format(
         len(feasibility)))
 
-    old_buildings = buildings.to_frame(buildings.local_columns)
-    new_buildings = new_buildings[buildings.local_columns]
+    building_columns = buildings.local_columns + ['construction_time']
+    old_buildings = buildings.to_frame(building_columns)
+    new_buildings = new_buildings[building_columns]
 
     if remove_developed_buildings:
         old_buildings = _remove_developed_buildings(
             old_buildings, new_buildings, unplace_agents)
 
-    all_buildings, new_index = merge_buildings(old_buildings, new_buildings,
-                                               return_index=True)
-    ret_buildings.index = new_index
+    if pipeline:
+        # Overwrite year_built
+        current_year = orca.get_injectable('year')
+        new_buildings['year_built'] = ((new_buildings.construction_time // 12)
+                                       + current_year)
+        new_buildings.drop('construction_time', axis=1, inplace=True)
+        pl.add_sites_orca('pipeline', 'dev_sites', new_buildings, 'parcel_id')
+    else:
+        new_buildings.drop('construction_time', axis=1, inplace=True)
+        all_buildings = merge_buildings(old_buildings, new_buildings)
+        orca.add_table("buildings", all_buildings)
 
-    return all_buildings, ret_buildings
-
-
-def add_new_units(dev, new_buildings):
-    config = dev.to_dict
-
-    if "residential_units" in orca.list_tables() and config['residential']:
-        # need to add units to the units table as well
-        old_units = orca.get_table("residential_units")
-        old_units = old_units.to_frame(old_units.local_columns)
-
-        unit_num = np.concatenate(
-            [np.arange(i) for i in new_buildings.residential_units.values])
-
-        building_id = np.repeat(
-            new_buildings.index.values,
-            new_buildings.residential_units.astype('int32').values)
-
-        new_units = pd.DataFrame({
-            "unit_residential_price": 0,
-            "num_units": 1,
-            "deed_restricted": 0,
-            "unit_num": unit_num,
-            "building_id": building_id
-        })
-
-        new_units.sort(columns=["building_id", "unit_num"], inplace=True)
-        new_units.reset_index(drop=True, inplace=True)
-
-        print("Adding {:,} units to the residential_units table".format(
-            len(new_units)))
-        all_units = merge_buildings(old_units, new_units)
-        all_units.index.name = "unit_id"
-
-        orca.add_table("residential_units", all_units)
+    return new_buildings
 
 
 def compute_units_to_build(num_agents, num_units, target_vacancy):
@@ -922,9 +923,9 @@ def merge_buildings(old_df, new_df, return_index=False):
 
     Parameters
     ----------
-    old_df : dataframe
+    old_df : DataFrame
         Current set of buildings
-    new_df : dataframe
+    new_df : DataFrame
         New buildings to add, usually comes from this module
     return_index : bool
         If return_index is true, this method will return the new
@@ -933,11 +934,11 @@ def merge_buildings(old_df, new_df, return_index=False):
 
     Returns
     -------
-    df : dataframe
+    df : DataFrame
         Combined DataFrame of buildings, makes sure indexes don't overlap
     index : pd.Index
         If and only if return_index is True, return the new index for the
-        new_df dataframe (which changes in order to create a unique index
+        new_df DataFrame (which changes in order to create a unique index
         after the merge)
     """
     maxind = np.max(old_df.index.values)
@@ -959,7 +960,7 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
                   remove_developed_buildings=True,
                   unplace_agents=['households', 'jobs'],
                   num_units_to_build=None, profit_to_prob_func=None,
-                  custom_selection_func=None):
+                  custom_selection_func=None, pipeline=False):
     """
     Run the developer model to pick and build buildings
 
@@ -1007,18 +1008,21 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
         For all tables in the list, will look for field building_id and set
         it to -1 for buildings which are removed - only executed if
         remove_developed_buildings is true
-    num_units_to_build: optional, int
+    num_units_to_build : optional, int
         If num_units_to_build is passed, build this many units rather than
         computing it internally by using the length of agents adn the sum of
         the relevant supply columin - this trusts the caller to know how to
         compute this.
-    profit_to_prob_func: func
+    profit_to_prob_func : func
         Passed directly to dev.pick
-    custom_selection_func: func
+    custom_selection_func : func
         User passed function that decides how to select buildings for
         development after probabilities are calculated. Must have
         parameters (self, df, p) and return a numpy array of buildings to
         build (i.e. df.index.values)
+    pipeline : bool
+        Passed to add_buildings
+
 
     Returns
     -------
@@ -1027,11 +1031,10 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     """
     cfg = misc.config(cfg)
 
-    target_units = (
-        num_units_to_build or
-        compute_units_to_build(len(agents),
-                               buildings[supply_fname].sum(),
-                               target_vacancy))
+    target_units = (num_units_to_build
+                    or compute_units_to_build(len(agents),
+                                              buildings[supply_fname].sum(),
+                                              target_vacancy))
 
     dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
                                       target_units, parcel_size,
@@ -1044,24 +1047,18 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     new_buildings = dev.pick(profit_to_prob_func, custom_selection_func)
     orca.add_table("feasibility", dev.feasibility)
 
-    if new_buildings is None:
+    if new_buildings is None or len(new_buildings) == 0:
         return
 
-    if len(new_buildings) == 0:
-        return new_buildings
+    new_buildings = add_buildings(dev.feasibility, buildings, new_buildings,
+                                  form_to_btype_callback,
+                                  add_more_columns_callback,
+                                  supply_fname, remove_developed_buildings,
+                                  unplace_agents, pipeline)
 
-    all_buildings, ret_buildings = (
-        process_new_buildings(dev.feasibility, buildings, new_buildings,
-                              form_to_btype_callback,
-                              add_more_columns_callback,
-                              supply_fname, remove_developed_buildings,
-                              unplace_agents))
-
-    add_new_units(dev, ret_buildings)
-
-    orca.add_table("buildings", all_buildings)
-
-    return ret_buildings
+    # This is a change from previous behavior, which return the newly merged
+    # "all buildings" table
+    return new_buildings
 
 
 def scheduled_development_events(buildings, new_buildings,

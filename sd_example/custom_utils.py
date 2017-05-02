@@ -190,7 +190,8 @@ class SimulationSummaryData(object):
 def building_occupancy(oldest_year=None):
     """
     Add "occupancy" column to buildings table using units for residential and
-    square footage for nonresidential uses.
+    square footage for nonresidential uses. Used in occupancy_vars custom
+    model for San Diego.
 
     Parameters
     ----------

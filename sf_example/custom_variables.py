@@ -212,3 +212,8 @@ def land_cost(parcels, parcel_sales_price_sqft_func):
     return ((parcels.total_sqft
             * parcel_sales_price_sqft_func("residential"))
             .reindex(parcels.index).fillna(0))
+
+
+@orca.column('parcels', 'node_id')
+def parcel_nodes(parcels):
+    return pd.Series(data=[1] * len(parcels))

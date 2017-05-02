@@ -60,6 +60,7 @@ def building_sqft_per_job(settings):
 @orca.table('buildings', cache=True)
 def buildings(store):
     df = store['buildings']
+    df.index.name = 'building_id'
     return df
 
 
@@ -105,9 +106,21 @@ def nodes():
     return pd.DataFrame()
 
 
-@orca.table('occupancy', cache=True)
-def occupancy():
-    return pd.DataFrame()
+@orca.table('dev_sites', cache=True)
+def dev_sites():
+    df = pd.DataFrame(columns=['project_id',
+                               'parcel_id',
+                               'year_built'])
+    df.index.name = 'site_id'
+    return df
+
+
+@orca.table('pipeline', cache=True)
+def pipeline():
+    df = pd.DataFrame(columns=['completion_year', 'sites',
+                               'sites_active', 'sites_built'])
+    df.index.name = 'project_id'
+    return df
 
 
 # this specifies the relationships between tables

@@ -9,9 +9,10 @@ import numpy as np
 from urbansim.utils import misc
 from urbansim.utils import networks
 
-from urbansim_parcels import utils
-from urbansim_parcels import datasources
-from urbansim_parcels import variables
+from . import utils
+from . import datasources
+from . import variables
+from . import pipeline_utils as pl
 
 
 @orca.step('rsh_estimate')
@@ -189,6 +190,30 @@ def feasibility(parcels,
                           cfg='proforma.yaml')
 
 
+@orca.step('feasibility_with_pipeline')
+def feasibility_with_pipeline(parcels,
+                              parcel_sales_price_sqft_func,
+                              parcel_is_allowed_func):
+    utils.run_feasibility(parcels,
+                          parcel_sales_price_sqft_func,
+                          parcel_is_allowed_func,
+                          pipeline=True,
+                          cfg='proforma.yaml')
+
+
+@orca.step('feasibility_large_parcels')
+def feasibility_large_parcels(parcels,
+                              parcel_sales_price_sqft_func,
+                              parcel_is_allowed_func,
+                              large_parcel_split_func):
+    utils.run_feasibility(parcels,
+                          parcel_sales_price_sqft_func,
+                          parcel_is_allowed_func,
+                          cfg='proforma_split.yaml',
+                          parcel_id_col='parcel_id',
+                          parcel_custom_callback=large_parcel_split_func)
+
+
 @orca.step('feasibility_with_occupancy')
 def feasibility_with_occupancy(parcels,
                                parcel_sales_price_sqft_func,
@@ -200,7 +225,6 @@ def feasibility_with_occupancy(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
                           parcel_occupancy_func,
-                          start_year=orca.get_injectable('start_year'),
                           cfg='proforma.yaml',
                           modify_df=modify_df_occupancy,
                           modify_revenues=modify_revenues_occupancy)
@@ -212,6 +236,49 @@ def add_extra_columns(df):
                 'residential_sales_price', 'non_residential_rent']:
         df[col] = 0
     return df
+
+
+@orca.step('developer_large_parcels')
+def developer_large_parcels(feasibility, households, jobs, buildings, parcels,
+                            year, summary, form_to_btype_func,
+                            add_extra_columns_func,
+                            large_parcel_selection_func):
+    new_res = utils.run_developer(
+        "residential",
+        households,
+        buildings,
+        'residential_units',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_residential_units,
+        'res_developer.yaml',
+        year=year,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        custom_selection_func=large_parcel_selection_func,
+        pipeline=True)
+
+    summary.add_parcel_output(new_res)
+
+    new_nonres = utils.run_developer(
+        ["office", "retail", "industrial"],
+        jobs,
+        buildings,
+        'job_spaces',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_job_spaces,
+        'nonres_developer.yaml',
+        year=year,
+        target_vacancy=.21,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        custom_selection_func=large_parcel_selection_func,
+        pipeline=True)
+
+    summary.add_parcel_output(new_nonres)
 
 
 @orca.step('residential_developer')
@@ -230,6 +297,28 @@ def residential_developer(feasibility, households, buildings, parcels, year,
         year=year,
         form_to_btype_callback=form_to_btype_func,
         add_more_columns_callback=add_extra_columns_func)
+
+    summary.add_parcel_output(new_buildings)
+
+
+@orca.step('residential_developer_pipeline')
+def residential_developer_pipeline(feasibility, households, buildings, parcels,
+                                   year, summary, form_to_btype_func,
+                                   add_extra_columns_func):
+    new_buildings = utils.run_developer(
+        "residential",
+        households,
+        buildings,
+        'residential_units',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_residential_units,
+        'res_developer.yaml',
+        year=year,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        pipeline=True)
 
     summary.add_parcel_output(new_buildings)
 
@@ -278,6 +367,29 @@ def non_residential_developer(feasibility, jobs, buildings, parcels, year,
     summary.add_parcel_output(new_buildings)
 
 
+@orca.step('non_residential_developer_pipeline')
+def non_residential_developer_pipeline(feasibility, jobs, buildings, parcels,
+                                       year, summary, form_to_btype_func,
+                                       add_extra_columns_func):
+    new_buildings = utils.run_developer(
+        ["office", "retail", "industrial"],
+        jobs,
+        buildings,
+        'job_spaces',
+        feasibility,
+        parcels.parcel_size,
+        parcels.ave_sqft_per_unit,
+        parcels.total_job_spaces,
+        'nonres_developer.yaml',
+        year=year,
+        target_vacancy=.21,
+        form_to_btype_callback=form_to_btype_func,
+        add_more_columns_callback=add_extra_columns_func,
+        pipeline=True)
+
+    summary.add_parcel_output(new_buildings)
+
+
 @orca.step('non_residential_developer_profit')
 def non_residential_developer_profit(feasibility, jobs, buildings,
                                      parcels, year, summary,
@@ -299,6 +411,11 @@ def non_residential_developer_profit(feasibility, jobs, buildings,
         custom_selection_func=nonres_selection)
 
     summary.add_parcel_output(new_buildings)
+
+
+@orca.step('build_from_pipeline')
+def build_from_pipeline():
+    pl.build_from_pipeline_orca('pipeline', 'dev_sites', 'buildings', 'year')
 
 
 @orca.step("scheduled_development_events")
