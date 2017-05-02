@@ -219,8 +219,12 @@ def split_by_size(df, area_col, other_split_cols, size):
     split_df.index.name = 'parcel_id'
     split_df.reset_index(inplace=True)
 
-    for col in split_cols:
-        split_df[col] = split_df[col] / split_df.sites_available
+    original_size = split_df[area_col]
+    split_df[area_col] = size
+
+    for col in other_split_cols:
+        split_df[col] = (split_df[col]
+                         * (split_df[area_col] / original_size))
     return split_df
 
 
@@ -230,9 +234,13 @@ def build_from_pipeline(pipeline, sites, buildings, year):
     Parameters
     ----------
     pipeline : DataFrame
+        DataFrame of projects in the pipeline
     sites : DataFrame
+        DataFrame of sites to add to buildings table
     buildings : DataFrame
+        DataFrame of existing buildings to add new sites to
     year : int
+        The current simulation year
 
     Returns
     -------

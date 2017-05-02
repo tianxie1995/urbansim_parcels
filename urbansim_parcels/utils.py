@@ -816,19 +816,33 @@ def add_buildings(feasibility, buildings, new_buildings,
 
     Parameters
     ----------
-    feasibility
-    buildings
-    new_buildings
-    form_to_btype_callback
-    add_more_columns_callback
-    supply_fname
-    remove_developed_buildings
-    unplace_agents
-    pipeline
+    feasibility : DataFrame
+        Results from SqFtProForma lookup() method
+    buildings : DataFrameWrapper
+        Wrapper for current buildings table
+    new_buildings : DataFrame
+        DataFrame of selected buildings to build or add to pipeline
+    form_to_btype_callback : func
+        Callback function to assign forms to building types
+    add_more_columns_callback : func
+        Callback function to add columns to new_buildings table; this is
+        useful for making sure new_buildings table has all required columns
+        from the buildings table
+    supply_fname : str
+        Name of supply column for this type (e.g. units or job spaces)
+    remove_developed_buildings : bool
+        Remove all buildings on the parcels which are being developed on
+    unplace_agents : list of strings
+        For all tables in the list, will look for field building_id and set
+        it to -1 for buildings which are removed - only executed if
+        remove_developed_buildings is true
+    pipeline : bool
+        If True, will add new buildings to dev_sites table and pipeline rather
+        than directly to buildings table
 
     Returns
     -------
-
+    new_buildings : DataFrame
     """
 
     if form_to_btype_callback is not None:

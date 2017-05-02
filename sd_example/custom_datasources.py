@@ -39,8 +39,6 @@ def jobs(store):
 @orca.table('travel_data', cache=True)
 def travel_data(store):
     df = store['travel_data']
-    # Some bytes types in python 3
-    # df = utils.decode_byte_df(df)
     return df
 
 
@@ -76,7 +74,6 @@ def dev_sites(store):
     cols = [c for c in sde.columns if c not in removals]
     df = sde[cols].reset_index(drop=True)
     df['project_id'] = df.index.values
-    # df['pipeline_id'] = df.index.values
     df['residential_sqft'] = (df.sqft_per_unit
                               * df.residential_units)
     df['job_spaces'] = df.non_residential_sqft / 400

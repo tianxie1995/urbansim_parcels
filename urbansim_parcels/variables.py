@@ -42,6 +42,9 @@ def random_type(row):
 
 @orca.injectable('parcel_occupancy_func', autocall=False)
 def parcel_average_occupancy(df, pf):
+    """
+    Passed to parcel_custom_callback in run_feasibility.
+    """
 
     for use in pf.uses:
         buildings = orca.get_table('building_occupancy').to_frame(
@@ -84,6 +87,9 @@ def split_constant_size(df, pf):
 
 @orca.injectable('large_parcel_selection_func', autocall=False)
 def large_parcel_selection_func(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     grouped_profit = df.groupby('parcel_id').agg('sum')
     profitable_parcels = (grouped_profit
                           .loc[grouped_profit.max_profit > 1000000]
@@ -129,6 +135,9 @@ def modify_revenues_occupancy(self, form, df, revenues):
 
 @orca.injectable('res_selection', autocall=False)
 def res_selection(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     min_profit_per_sqft = 20
     print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
           .format(min_profit_per_sqft))
@@ -139,6 +148,9 @@ def res_selection(self, df, p):
 
 @orca.injectable('nonres_selection', autocall=False)
 def nonres_selection(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     min_profit_per_sqft = 10
     print("BUILDING ALL BUILDINGS WITH PROFIT > ${:.2f} / sqft"
           .format(min_profit_per_sqft))
@@ -149,6 +161,9 @@ def nonres_selection(self, df, p):
 
 @orca.injectable('custom_selection', autocall=False)
 def custom_selection(self, df, p):
+    """
+    Passed to custom_selection_func in Developer.pick().
+    """
     profit_cost_ratio = .10
     minimum_profit = 100000
     print("BUILDING ALL BUILDINGS WITH PROFIT TO COST RATIO > {:.0f}%"

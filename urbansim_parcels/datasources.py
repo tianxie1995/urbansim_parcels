@@ -109,7 +109,6 @@ def nodes():
 @orca.table('dev_sites', cache=True)
 def dev_sites():
     df = pd.DataFrame(columns=['project_id',
-                               # 'pipeline_id',
                                'parcel_id',
                                'year_built'])
     df.index.name = 'site_id'
