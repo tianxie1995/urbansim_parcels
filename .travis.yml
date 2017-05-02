@@ -22,7 +22,7 @@ install:
 - pip install orca
 - pip install https://github.com/udst/urbansim/archive/master.zip
 - pip install osmnet pandana
-- cd .. && git clone -b pipeline git@github.com:urbansim/developer.git
+- cd .. && git clone git@github.com:urbansim/developer.git
 - pip install ./developer
 - cd $TRAVIS_BUILD_DIR && pip install .
 
