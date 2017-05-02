@@ -142,6 +142,15 @@ def test_build_from_pipeline(pipeline, sites, buildings):
     check_site_count(new_sites, new_pipeline)
 
 
+def test_build_from_pipeline_empty(pipeline):
+
+    sites = pd.DataFrame()
+    buildings = pd.DataFrame()
+    results = pl.build_from_pipeline(pipeline, sites, buildings, 2012)
+
+    assert results is None
+
+
 def test_build_from_pipeline_orca(pipeline, sites, buildings):
 
     orca.add_table('pipeline', pipeline)
@@ -169,3 +178,19 @@ def test_build_from_pipeline_orca(pipeline, sites, buildings):
 
     check_latest_year(new_sites, new_pipeline)
     check_site_count(new_sites, new_pipeline)
+
+
+def test_build_from_pipeline_orca_empty(pipeline):
+
+    sites = pd.DataFrame()
+    buildings = pd.DataFrame()
+
+    orca.add_table('pipeline', pipeline)
+    orca.add_table('sites', sites)
+    orca.add_table('buildings', buildings)
+    orca.add_injectable('year', 2012)
+
+    pl.build_from_pipeline_orca('pipeline', 'sites', 'buildings', 'year')
+
+    new_pipeline = orca.get_table('pipeline').to_frame()
+    assert new_pipeline.equals(pipeline)

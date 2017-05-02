@@ -241,6 +241,9 @@ def build_from_pipeline(pipeline, sites, buildings, year):
     new_buildings : DataFrame
     """
 
+    if len(pipeline) == 0 or len(sites) == 0:
+        return
+
     ds = sites.loc[sites.year_built == year]
 
     # Build sites due to be built this year
@@ -288,6 +291,8 @@ def build_from_pipeline_orca(pipeline_name, sites_name, buildings_name,
     year = orca.get_injectable(year_name)
 
     results = build_from_pipeline(pipeline, sites, buildings, year)
+    if results is None:
+        return
     new_pipeline, new_sites, new_buildings = results
 
     orca.add_table(pipeline_name, new_pipeline)
