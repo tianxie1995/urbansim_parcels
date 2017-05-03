@@ -224,10 +224,10 @@ def feasibility_with_occupancy(parcels,
     utils.run_feasibility(parcels,
                           parcel_sales_price_sqft_func,
                           parcel_is_allowed_func,
-                          parcel_occupancy_func,
                           cfg='proforma.yaml',
                           modify_df=modify_df_occupancy,
-                          modify_revenues=modify_revenues_occupancy)
+                          modify_revenues=modify_revenues_occupancy,
+                          parcel_custom_callback=parcel_occupancy_func)
 
 
 @orca.injectable("add_extra_columns_func", autocall=False)

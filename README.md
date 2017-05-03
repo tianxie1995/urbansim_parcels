@@ -1,5 +1,10 @@
 # UrbanSim Parcel-level Starter Model
+
+[![Build Status](https://travis-ci.com/urbansim/urbansim_parcels.svg?token=GSDNqBio5uUExRqdD5zJ&branch=master)](https://travis-ci.com/urbansim/urbansim_parcels)
+
 This repository provides a starting place for parcel level UrbanSim models, and provides two working example models, with public data and configurations included in the repo itself. This version is a replacement for both `urbansim_defaults` and `sanfran_urbansim`, and works with the new UDST developer model. Works with Python 2.7 and 3.5.
+
+The examples provided here are discussed in detail in the documentation for the new [developer model](https://urbansim.github.io/developer/).
 
 ### Requirements
 * urbansim
