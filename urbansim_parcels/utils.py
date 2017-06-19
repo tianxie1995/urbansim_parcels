@@ -871,6 +871,7 @@ def add_buildings(feasibility, buildings, new_buildings,
 
     if pipeline:
         # Overwrite year_built
+        # Fix the max_building_id
         current_year = orca.get_injectable('year')
         new_buildings['year_built'] = ((new_buildings.construction_time // 12)
                                        + current_year)
@@ -878,7 +879,9 @@ def add_buildings(feasibility, buildings, new_buildings,
         pl.add_sites_orca('pipeline', 'dev_sites', new_buildings, 'parcel_id')
     else:
         new_buildings.drop('construction_time', axis=1, inplace=True)
-        all_buildings = merge_buildings(old_buildings, new_buildings)
+        max_id = orca.get_injectable("max_building_id")
+        all_buildings = merge_buildings(old_buildings, new_buildings, False, max_id)
+        orca.add_injectable("max_building_id", max(all_buildings.index.max(), max_id))
         orca.add_table("buildings", all_buildings)
 
     return new_buildings
@@ -915,7 +918,7 @@ def compute_units_to_build(num_agents, num_units, target_vacancy):
     return target_units
 
 
-def merge_buildings(old_df, new_df, return_index=False):
+def merge_buildings(old_df, new_df, return_index=False, min_start_id=None):
     """
     Merge two dataframes of buildings.  The old dataframe is
     usually the buildings dataset and the new dataframe is a modified
@@ -942,6 +945,8 @@ def merge_buildings(old_df, new_df, return_index=False):
         after the merge)
     """
     maxind = np.max(old_df.index.values)
+    if min_start_id:
+        maxind = max((min_start_id, maxind))
     new_df = new_df.reset_index(drop=True)
     new_df.index = new_df.index + maxind + 1
     concat_df = pd.concat([old_df, new_df], verify_integrity=True)
