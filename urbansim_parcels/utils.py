@@ -801,7 +801,7 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
         displaced_agents = agents.building_id.isin(drop_buildings.index)
         print("Unplaced {} before: {}"
               .format(tbl, len(agents.query("building_id == -1"))))
-        agents.building_id[displaced_agents] = -1
+        agents.loc[displaced_agents, 'building_id'] = -1
         print("Unplaced {} after: {}"
               .format(tbl, len(agents.query("building_id == -1"))))
 
