@@ -781,7 +781,8 @@ def run_feasibility(parcels, parcel_price_callback,
 def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     redev_buildings = old_buildings.parcel_id.isin(new_buildings.parcel_id)
     l1 = len(old_buildings)
-    drop_buildings = old_buildings[redev_buildings]
+    drop_buildings = old_buildings[redev_buildings].copy()
+    drop_buildings['year_demo'] = orca.get_injectable('year')
 
     if "dropped_buildings" in orca.orca._TABLES:
         prev_drops = orca.get_table("dropped_buildings").to_frame()
