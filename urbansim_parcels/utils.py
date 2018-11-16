@@ -734,9 +734,20 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf,
 
         lookup_results[form] = pf.lookup(form, newdf, **kwargs)
 
-    feasibility = pd.concat(lookup_results.values(),
-                            keys=lookup_results.keys(),
-                            axis=1)
+    if pf.proposals_to_keep > 1:
+        form_feas = []
+        for form_name in lookup_results.keys():
+            df_feas_form = lookup_results[form_name]
+            df_feas_form['form'] = form_name
+            form_feas.append(df_feas_form)
+
+        feasibility = pd.concat(form_feas)
+        feasibility.index.name = 'parcel_id'
+
+    else:
+        feasibility = pd.concat(lookup_results.values(),
+                                keys=lookup_results.keys(),
+                                axis=1)
 
     return feasibility
 
