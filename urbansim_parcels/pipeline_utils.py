@@ -136,7 +136,7 @@ def remove_pipelined_sites(parcels):
     ds = orca.get_table('dev_sites').to_frame()
     parcels_in_pipeline = ds.parcel_id.unique()
 
-    new_sites = parcels.to_frame().copy()
+    new_sites = parcels.local.copy()
 
     print('{} parcels before removing those already in pipeline'
           .format(len(new_sites)))
