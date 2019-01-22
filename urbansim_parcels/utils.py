@@ -902,7 +902,7 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
     Parameters
     ----------
     agents : DataFrame wrapper
-        Contaings DataFrame of agents that need units in the region
+        Contains DataFrame of agents that need units in the region
     supply_fname : str
         Name of the types of units for the type of agent under analysis
         ('residential_units' for households or 'job_spaces' for jobs)
