@@ -948,7 +948,7 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
         df = pd.merge(
             buildings, target_vacancy, on='building_type_id', how='left')
         df['agents'] = num_agents *df.current_agents/df.current_agents.sum()
-        df['target_units'] = df.agents/(1-df.vacancy) - df[supply_fname]
+        df['target_units'] = df.agents/(1-df.vacancy_rates) - df[supply_fname]
         df.loc[df['target_units'] < 0, 'target_units'] = 0
         df = df[['building_type_id','target_units']].\
             set_index('building_type_id')
