@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='urbansim_parcels',
-    version='0.1dev',
+    version='0.1dev1',
     description='Urbansim parcel model',
     author='UrbanSim Inc.',
     author_email='info@urbansim.com',
