@@ -1,39 +1,30 @@
 language: python
-sudo: false
+
 python:
-- '2.7'
-- '3.5'
+  - '2.7'
+  - '3.5'
+  - '3.6'
+  - '3.7'
 
 install:
-- if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
-  -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-  -O miniconda.sh; fi
-- bash miniconda.sh -b -p $HOME/miniconda
-- export PATH="$HOME/miniconda/bin:$PATH"
-- hash -r
-- conda config --set always_yes yes --set changeps1 no
-- conda update -q conda
-- conda info -a
-- |
-  conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy pandas pytest matplotlib scipy statsmodels pytables
-- source activate test-environment
-- conda list
-- pip install pycodestyle
-- pip install orca
-- pip install https://github.com/udst/urbansim/archive/master.zip
-- pip install osmnet pandana
-- cd .. && git clone git@github.com:urbansim/developer.git
-- pip install ./developer
-- cd $TRAVIS_BUILD_DIR && pip install .
+  - pip install https://github.com/urbansim/developer/archive/master.zip
+  - pip install .
+  - pip install -r requirements-dev.txt
+  - pip list
 
 script:
-- pycodestyle urbansim_parcels
-- pycodestyle sf_example
-- pycodestyle sd_example
-- py.test
-- cd $TRAVIS_BUILD_DIR/sf_example && python simulate.py
-- python simulate_occupancy.py
-- python simulate_pipeline.py
-- cd $TRAVIS_BUILD_DIR/sd_example && python simulate.py
-- python simulate_occupancy.py
-- python simulate_pipeline.py
+  - pycodestyle urbansim_parcels
+  - pycodestyle sd_example
+  - pycodestyle sf_example
+  - coverage run --source urbansim_parcels --module pytest --verbose
+  - cd $TRAVIS_BUILD_DIR/sd_example
+  - python simulate.py 
+  - python simulate_occupancy.py
+  - python simulate_pipeline.py
+  - cd $TRAVIS_BUILD_DIR/sf_example
+  - python simulate.py
+  - python simulate_occupancy.py
+  - python simulate_pipeline.py
+
+after_success:
+  - coverage report

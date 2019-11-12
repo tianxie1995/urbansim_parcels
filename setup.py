@@ -1,10 +1,3 @@
-# Install setuptools if not installed.
-try:
-    import setuptools
-except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-
 from setuptools import setup, find_packages
 
 setup(
@@ -17,16 +10,16 @@ setup(
     classifiers=[
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5'
+        'Programming Language :: Python :: 3.6'
+        'Programming Language :: Python :: 3.7'
     ],
     packages=find_packages(exclude=['*.tests']),
     install_requires=[
-        'numpy >= 1.1.0',
-        'pandas >= 0.16.0',
-        'orca >= 1.3.0',
-        'urbansim >= 0.1.1',
-        'developer'
-    ],
-    extras_require={
-        'pandana': ['pandana>=0.1']
-    }
+        'developer',  # install manually: https://github.com/urbansim/developer
+        'numpy',
+        'orca',
+        'pandana',
+        'pandas',
+        'urbansim',
+    ]
 )
