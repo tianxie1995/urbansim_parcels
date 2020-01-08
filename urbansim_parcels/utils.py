@@ -781,7 +781,7 @@ def run_feasibility(parcels, parcel_price_callback,
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg)
           if cfg else sqftproforma.SqFtProForma.from_defaults())
     sites = (pl.remove_pipelined_sites(parcels) if pipeline
-             else parcels.local)#to_frame())
+             else parcels.local)
     df = apply_parcel_callbacks(sites, parcel_price_callback,
                                 pf, **kwargs)
 
@@ -948,7 +948,7 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
         df = pd.merge(
             buildings, target_vacancy, on='building_type_id', how='left')
         df['agents'] = num_agents *df.current_agents/df.current_agents.sum()
-        df['target_units'] = df.agents/(1-df.vacancy) - df[supply_fname]
+        df['target_units'] = df.agents/(1-df.vacancy_rates) - df[supply_fname]
         df.loc[df['target_units'] < 0, 'target_units'] = 0
         df = df[['building_type_id','target_units']].\
             set_index('building_type_id')
