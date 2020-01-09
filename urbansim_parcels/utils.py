@@ -589,19 +589,19 @@ def full_transition(agents, agent_controls, year, settings, location_fname,
     ct = agent_controls.to_frame()
     hh = agents.to_frame(agents.local_columns +
                          settings.get('add_columns', []))
-    print("Total agents before transition: {}".format(len(hh)))
+    print("Total agents before transition: {:,}".format(len(hh)))
     linked_tables = linked_tables or {}
-    for table_name, (table, col) in linked_tables.iteritems():
-        print("Total %s before transition: %s" % (table_name, len(table)))
+    for table_name, (table, col) in linked_tables.items():
+        print("Total {} before transition: {:,}".format(table_name, len(table)))
     tran = transition.TabularTotalsTransition(ct, settings['total_column'])
     model = transition.TransitionModel(tran)
     new, added_hh_idx, new_linked = model.transition(
         hh, year, linked_tables=linked_tables)
     new.loc[added_hh_idx, location_fname] = -1
-    print("Total agents after transition: {}".format(len(new)))
+    print("Total agents after transition: {:,}".format(len(new)))
     orca.add_table(agents.name, new)
-    for table_name, table in new_linked.iteritems():
-        print("Total %s after transition: %s" % (table_name, len(table)))
+    for table_name, table in new_linked.items():
+        print("Total {} after transition: {:,}".format(table_name, len(table)))
         orca.add_table(table_name, table)
 
 
@@ -781,7 +781,7 @@ def run_feasibility(parcels, parcel_price_callback,
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg)
           if cfg else sqftproforma.SqFtProForma.from_defaults())
     sites = (pl.remove_pipelined_sites(parcels) if pipeline
-             else parcels.local)#to_frame())
+             else parcels.local)
     df = apply_parcel_callbacks(sites, parcel_price_callback,
                                 pf, **kwargs)
 
@@ -949,6 +949,7 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
             buildings, target_vacancy, on='building_type_id', how='left')
         df['agents'] = num_agents *df.current_agents/df.current_agents.sum()
         df['target_units'] = df.agents/(1-df.vacancy_rate) - df[supply_fname]
+
         df.loc[df['target_units'] < 0, 'target_units'] = 0
         df = df[['building_type_id','target_units']].\
             set_index('building_type_id')
