@@ -523,7 +523,7 @@ def simple_relocation(choosers, relocation_rate, fieldname, cast=True):
     _print_number_unplaced(choosers, fieldname)
 
 
-def simple_transition(tbl, rate, location_fname):
+def simple_transition(tbl, rate, location_fname, linked_tables=None):
     """
     Run a simple growth rate transition model on the table passed in
 
@@ -536,22 +536,35 @@ def simple_transition(tbl, rate, location_fname):
     location_fname : str
         The field name in the resulting dataframe to set to -1 (to unplace
         new agents)
-
+    linked_tables : dict of tuple, optional
+        Dictionary of table_name: (table, 'column name') pairs. The column name
+        should match the index of `agents`. Indexes in `agents` that
+        are copied or removed will also be copied and removed in
+        linked tables.
     Returns
     -------
     Nothing
     """
-    transition = GrowthRateTransition(rate)
+    growth_rate_transition = GrowthRateTransition(rate)
     df = tbl.to_frame(tbl.local_columns)
 
     print("%d agents before transition" % len(df.index))
-    df, added, copied, removed = transition.transition(df, None)
+    df, added, copied, removed = growth_rate_transition.transition(df, None)
     print("%d agents after transition" % len(df.index))
 
     df.loc[added, location_fname] = -1
     orca.add_table(tbl.name, df)
     orca.add_table('new_{}'.format(tbl.name), added)
 
+    linked_tables = linked_tables or {}
+    updated_links = {}
+    for table_name, (table, col) in linked_tables.items():
+        print('updating linked table {}'.format(table_name))
+        updated_links[table_name] = \
+            transition._update_linked_table(table, col, added, copied, removed)
+    for table_name, table in updated_links.items():
+        print("Total {} after transition: {:,}".format(table_name, len(table)))
+        orca.add_table(table_name, table)
 
 def full_transition(agents, agent_controls, year, settings, location_fname,
                     linked_tables=None):
