@@ -941,6 +941,10 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
         agents = agents.to_frame(['building_id']).reset_index().\
             groupby('building_id').count().\
             rename(columns={'index':'current_agents'}).reset_index()
+        if 'current_agents' not in agents.columns:
+            col_id = [c for c in agents.columns if c != 'building_id']
+            if len(col_id)>0:
+                agents.rename(columns={col_id[0]:'current_agents'},inplace=True)
         buildings = pd.merge(
             buildings, agents, on='building_id', how = 'left').\
             groupby('building_type_id').sum().\
