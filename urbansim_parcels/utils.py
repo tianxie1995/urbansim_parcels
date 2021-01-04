@@ -951,7 +951,7 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
 
     else:
         assert all(target_vacancy<1.0)
-        agents = agents.to_frame('building_id').reset_index().\
+        agents = agents.to_frame(['building_id']).reset_index().\
             groupby('building_id').count().\
             rename(columns={'index':'current_agents'}).reset_index()
         if 'current_agents' not in agents.columns:
