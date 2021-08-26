@@ -589,19 +589,19 @@ def full_transition(agents, agent_controls, year, settings, location_fname,
     ct = agent_controls.to_frame()
     hh = agents.to_frame(agents.local_columns +
                          settings.get('add_columns', []))
-    print("Total agents before transition: {:,}".format(len(hh)))
+    print("Total agents before transition: {}".format(len(hh)))
     linked_tables = linked_tables or {}
-    for table_name, (table, col) in linked_tables.items():
-        print("Total {} before transition: {:,}".format(table_name, len(table)))
+    for table_name, (table, col) in linked_tables.iteritems():
+        print("Total %s before transition: %s" % (table_name, len(table)))
     tran = transition.TabularTotalsTransition(ct, settings['total_column'])
     model = transition.TransitionModel(tran)
     new, added_hh_idx, new_linked = model.transition(
         hh, year, linked_tables=linked_tables)
     new.loc[added_hh_idx, location_fname] = -1
-    print("Total agents after transition: {:,}".format(len(new)))
+    print("Total agents after transition: {}".format(len(new)))
     orca.add_table(agents.name, new)
-    for table_name, table in new_linked.items():
-        print("Total {} after transition: {:,}".format(table_name, len(table)))
+    for table_name, table in new_linked.iteritems():
+        print("Total %s after transition: %s" % (table_name, len(table)))
         orca.add_table(table_name, table)
 
 
@@ -734,20 +734,9 @@ def lookup_by_form(df, parcel_use_allowed_callback, pf,
 
         lookup_results[form] = pf.lookup(form, newdf, **kwargs)
 
-    if pf.proposals_to_keep > 1:
-        form_feas = []
-        for form_name in lookup_results.keys():
-            df_feas_form = lookup_results[form_name]
-            df_feas_form['form'] = form_name
-            form_feas.append(df_feas_form)
-
-        feasibility = pd.concat(form_feas)
-        feasibility.index.name = 'parcel_id'
-
-    else:
-        feasibility = pd.concat(lookup_results.values(),
-                                keys=lookup_results.keys(),
-                                axis=1)
+    feasibility = pd.concat(lookup_results.values(),
+                            keys=lookup_results.keys(),
+                            axis=1)
 
     return feasibility
 
@@ -781,7 +770,7 @@ def run_feasibility(parcels, parcel_price_callback,
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg)
           if cfg else sqftproforma.SqFtProForma.from_defaults())
     sites = (pl.remove_pipelined_sites(parcels) if pipeline
-             else parcels.local)
+             else parcels.to_frame())
     df = apply_parcel_callbacks(sites, parcel_price_callback,
                                 pf, **kwargs)
 
@@ -895,74 +884,34 @@ def add_buildings(feasibility, buildings, new_buildings,
     return new_buildings
 
 
-def compute_units_to_build(agents, supply_fname, target_vacancy):
+def compute_units_to_build(num_agents, num_units, target_vacancy):
     """
     Compute number of units to build to match target vacancy.
 
     Parameters
     ----------
-    agents : DataFrame wrapper
-        Contains DataFrame of agents that need units in the region
-    supply_fname : str
-        Name of the types of units for the type of agent under analysis
-        ('residential_units' for households or 'job_spaces' for jobs)
-    target_vacancy : float or pandas Series of floats
-        Target vacancy rate. Pandas Series when the target vacancy is provided
-         by building type (btype : vacancy).
+    num_agents : int
+        number of agents that need units in the region
+    num_units : int
+        number of units in buildings
+    target_vacancy : float (0-1.0)
+        target vacancy rate
 
     Returns
     -------
-    target_units : int or DataFrame
-        The number of units that need to be built. DataFrame containing target
-        units by building type when the target vacancy is provided by building
-        type.
+    number_of_units : int
+        the number of units that need to be built
     """
-
-    columns = ['building_type_id', supply_fname]
-    buildings = orca.get_table('buildings').to_frame(columns).reset_index()
-    num_agents = len(agents)
-    num_units = buildings[supply_fname].sum()
-
     print("Number of agents: {:,}".format(num_agents))
-
-    if isinstance(target_vacancy, float):
-        assert target_vacancy < 1.0
-        target_units = int(max(
-            (num_agents / (1 - target_vacancy) - num_units), 0))
-        print("Number of agent spaces: {:,}".format(int(num_units)))
-        print("Current vacancy = {:.2f}".format(1 - num_agents /
-                                                float(num_units)))
-        print("Target vacancy = {:.2f}, target of new units = {:,}".format(
-            target_vacancy,
-            target_units))
-
-    else:
-        assert all(target_vacancy<1.0)
-        agents = agents.to_frame(['building_id']).reset_index().\
-            groupby('building_id').count().\
-            rename(columns={'index':'current_agents'}).reset_index()
-        buildings = pd.merge(
-            buildings, agents, on='building_id', how = 'left').\
-            groupby('building_type_id').sum().\
-            reset_index()[['current_agents', 'building_type_id', supply_fname]]
-        df = pd.merge(
-            buildings, target_vacancy, on='building_type_id', how='left')
-        df['agents'] = num_agents *df.current_agents/df.current_agents.sum()
-        df['target_units'] = df.agents/(1-df.vacancy_rate) - df[supply_fname]
-
-        df.loc[df['target_units'] < 0, 'target_units'] = 0
-        df = df[['building_type_id','target_units']].\
-            set_index('building_type_id')
-        target_units = df['target_units'].sum()
-        print("Number of agent spaces: {:,}".format(num_units))
-        print("Current average vacancy = {:.2f}".format(
-            1 - num_agents/ num_units))
-        print("Target average vacancy = {:.2f}, target of new units = {:,}"
-            .format((1 - num_agents/ (num_units + target_units)),
-                    target_units))
-        target_units = df
-
-
+    print("Number of agent spaces: {:,}".format(int(num_units)))
+    assert target_vacancy < 1.0
+    target_units = int(max(
+        (num_agents / (1 - target_vacancy) - num_units), 0))
+    print("Current vacancy = {:.2f}".format(1 - num_agents /
+                                            float(num_units)))
+    print("Target vacancy = {:.2f}, target of new units = {:,}".format(
+        target_vacancy,
+        target_units))
     return target_units
 
 
@@ -1083,8 +1032,8 @@ def run_developer(forms, agents, buildings, supply_fname, feasibility,
     cfg = misc.config(cfg)
 
     target_units = (num_units_to_build
-                    or compute_units_to_build(agents,
-                                              supply_fname,
+                    or compute_units_to_build(len(agents),
+                                              buildings[supply_fname].sum(),
                                               target_vacancy))
 
     dev = develop.Developer.from_yaml(feasibility.to_frame(), forms,
@@ -1203,6 +1152,7 @@ def decode_byte_df(df):
 
     """
     byte_types = (np.bytes_, bytes)
+
     if isinstance(df.index, pd.core.index.MultiIndex):
         new_names = [name.decode() if type(name) in byte_types else name
                      for name in df.index.names]
