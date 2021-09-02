@@ -781,7 +781,7 @@ def run_feasibility(parcels, parcel_price_callback,
     pf = (sqftproforma.SqFtProForma.from_yaml(str_or_buffer=cfg)
           if cfg else sqftproforma.SqFtProForma.from_defaults())
     sites = (pl.remove_pipelined_sites(parcels) if pipeline
-             else parcels.local)
+             else parcels.to_frame())
     df = apply_parcel_callbacks(sites, parcel_price_callback,
                                 pf, **kwargs)
 
