@@ -792,7 +792,8 @@ def run_feasibility(parcels, parcel_price_callback,
 def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
     redev_buildings = old_buildings.parcel_id.isin(new_buildings.parcel_id)
     l1 = len(old_buildings)
-    drop_buildings = old_buildings[redev_buildings]
+    drop_buildings = old_buildings[redev_buildings].copy()
+    drop_buildings['year_demo'] = orca.get_injectable('year')
 
     if "dropped_buildings" in orca.orca._TABLES:
         prev_drops = orca.get_table("dropped_buildings").to_frame()
@@ -812,7 +813,7 @@ def _remove_developed_buildings(old_buildings, new_buildings, unplace_agents):
         displaced_agents = agents.building_id.isin(drop_buildings.index)
         print("Unplaced {} before: {}"
               .format(tbl, len(agents.query("building_id == -1"))))
-        agents.building_id[displaced_agents] = -1
+        agents.loc[displaced_agents, 'building_id'] = -1
         print("Unplaced {} after: {}"
               .format(tbl, len(agents.query("building_id == -1"))))
 
@@ -882,6 +883,7 @@ def add_buildings(feasibility, buildings, new_buildings,
 
     if pipeline:
         # Overwrite year_built
+        # Fix the max_building_id
         current_year = orca.get_injectable('year')
         new_buildings['year_built'] = ((new_buildings.construction_time // 12)
                                        + current_year)
@@ -889,7 +891,9 @@ def add_buildings(feasibility, buildings, new_buildings,
         pl.add_sites_orca('pipeline', 'dev_sites', new_buildings, 'parcel_id')
     else:
         new_buildings.drop('construction_time', axis=1, inplace=True)
-        all_buildings = merge_buildings(old_buildings, new_buildings)
+        max_id = orca.get_injectable("max_building_id")
+        all_buildings = merge_buildings(old_buildings, new_buildings, False, max_id)
+        orca.add_injectable("max_building_id", max(all_buildings.index.max(), max_id))
         orca.add_table("buildings", all_buildings)
 
     return new_buildings
@@ -966,7 +970,7 @@ def compute_units_to_build(agents, supply_fname, target_vacancy):
     return target_units
 
 
-def merge_buildings(old_df, new_df, return_index=False):
+def merge_buildings(old_df, new_df, return_index=False, min_start_id=None):
     """
     Merge two dataframes of buildings.  The old dataframe is
     usually the buildings dataset and the new dataframe is a modified
@@ -993,6 +997,8 @@ def merge_buildings(old_df, new_df, return_index=False):
         after the merge)
     """
     maxind = np.max(old_df.index.values)
+    if min_start_id:
+        maxind = max((min_start_id, maxind))
     new_df = new_df.reset_index(drop=True)
     new_df.index = new_df.index + maxind + 1
     concat_df = pd.concat([old_df, new_df], verify_integrity=True)
