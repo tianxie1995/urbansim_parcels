@@ -891,7 +891,11 @@ def add_buildings(feasibility, buildings, new_buildings,
         pl.add_sites_orca('pipeline', 'dev_sites', new_buildings, 'parcel_id')
     else:
         new_buildings.drop('construction_time', axis=1, inplace=True)
-        max_id = orca.get_injectable("max_building_id")
+        try:
+            max_id = orca.get_injectable("max_building_id")
+        except KeyError:
+            max_id = np.max(old_buildings.index.values)
+            
         all_buildings = merge_buildings(old_buildings, new_buildings, False, max_id)
         orca.add_injectable("max_building_id", max(all_buildings.index.max(), max_id))
         orca.add_table("buildings", all_buildings)
